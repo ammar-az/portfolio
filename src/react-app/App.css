@@ -1,33 +1,25 @@
 #root {
-	max-width: 1280px;
-	margin: 0 auto;
-	padding: 2rem;
-	text-align: center;
+  width: 100vw;
+  height: 100vh;
+  
+  text-align: center;
 }
 
-.logo {
-	height: 6em;
-	padding: 1.5em;
-	will-change: filter;
-	transition: filter 300ms;
-}
-.logo:hover {
-	filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-	filter: drop-shadow(0 0 2em #61dafbaa);
-}
-.logo.cloudflare:hover {
-	filter: drop-shadow(0 0 2em #f6821faa);
-}
+:root {
+  --color-background: #17191f;
+  --color-surface: #242832;
+  --color-text: #f0f2f7;
+  --color-muted: #a9afbd;
+  --color-accent: #8dbbff;
 
-@keyframes logo-spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
-	}
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+
+  --transition-fast: 160ms ease;
+  --transition-normal: 280ms ease;
+
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -36,10 +28,3 @@
 	}
 }
 
-.card {
-	padding: 2em;
-}
-
-.read-the-docs {
-	color: #888;
-}

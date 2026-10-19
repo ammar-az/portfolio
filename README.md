@@ -1,4 +1,6 @@
-# React + Vite + Hono + Cloudflare Workers
+# WIP Portfolio page
+
+# React + Vite + Cloudflare Workers
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/cloudflare/templates/tree/main/vite-react-template)
 
@@ -12,7 +14,6 @@ This template provides a minimal setup for building a React application with Typ
 
 - [**React**](https://react.dev/) - A modern UI library for building interactive interfaces
 - [**Vite**](https://vite.dev/) - Lightning-fast build tooling and development server
-- [**Hono**](https://hono.dev/) - Ultralight, modern backend framework
 - [**Cloudflare Workers**](https://developers.cloudflare.com/workers/) - Edge computing platform for global deployment
 
 ### ✨ Key Features
@@ -21,7 +22,6 @@ This template provides a minimal setup for building a React application with Typ
 - 📦 TypeScript support out of the box
 - 🛠️ ESLint configuration included
 - ⚡ Zero-config deployment to Cloudflare's global network
-- 🎯 API routes with Hono's elegant routing
 - 🔄 Full-stack development setup
 - 🔎 Built-in Observability to monitor your Worker
 
@@ -87,4 +87,3 @@ npx wrangler tail
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
 - [Vite Documentation](https://vitejs.dev/guide/)
 - [React Documentation](https://reactjs.org/)
-- [Hono Documentation](https://hono.dev/)
