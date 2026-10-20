@@ -1,0 +1,85 @@
+.app {
+  box-sizing: border-box;
+  flex-direction: column;
+}
+
+.cover{
+  position: fixed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 900;
+}
+
+.intro {
+    margin: auto 1rem;
+}
+
+.card-layout {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+
+    justify-content: space-evenly;
+    margin: 1rem auto;
+}
+
+.card {
+    height: 20rem;
+    width: 30rem;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+
+    background-color: grey;
+    border: 2px solid rgb(200, 200, 200);
+
+    margin: 2rem;
+    padding: 0.5rem;
+    
+    justify-items: flex-end;
+}
+
+.card-preview {
+    flex: 1;
+    background-color: white;
+    margin-bottom: 4px;
+    min-height: 0;
+}
+
+.card-info {
+    display: flex;
+    flex-direction: row;
+
+    height: 4rem;
+    margin-bottom: 0rem;
+
+    justify-content: left;
+    justify-items: center;
+    align-items: center;
+}
+
+.card-name {
+    box-sizing: border-box;
+    flex: 1;
+
+    font-size: 2rem;
+    padding: 0rem;
+}
+
+.card-logo {
+    height: 4rem;
+    width: 4rem;
+    background: transparent;
+}
+
+.card-logo svg {
+    width: 3rem;
+    height: 3rem;
+}

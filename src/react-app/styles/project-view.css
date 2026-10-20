@@ -1,0 +1,87 @@
+.project-info {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+
+    display: flex;
+    gap: 1rem;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+
+    width: 80vw;
+    margin: 1rem auto;
+
+}
+
+.info-bar {
+    position: relative;
+    box-sizing: border-box;
+    opacity: 100%;
+    top: 0;
+
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+
+    width: 100%;
+    height: 6rem;
+    background-color: grey;
+}
+
+.info-logo{
+    height: 100%;
+    width: auto;
+    aspect-ratio: 1;
+    background-color: blueviolet;
+}
+
+.info-title {
+    color: black;
+    background: blueviolet;
+    align-content: center;
+    flex: 1;
+}
+
+.exit-button {
+    height: 100%;
+    width: auto;
+    aspect-ratio: 1;
+    background-color: blueviolet;
+    color: black;
+}
+
+.exit-button svg{
+    height: 100%;
+    width: 100%;
+}
+
+.info-visual {
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 3;
+    padding: 1rem;
+    background-color: grey;
+}
+
+.info-visual-content {
+    height: 100%;
+    background-color: blueviolet;
+}
+
+.info-text {
+    color: black;
+    box-sizing: border-box;
+    width: 100%;
+    flex: 1;
+    background-color: grey;
+
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.info-desc {
+    text-wrap-mode: wrap;
+    text-align: left;
+    white-space: pre-line;
+}
