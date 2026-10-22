@@ -8,14 +8,14 @@ import Simple from "./components/Simple";
 import Space from "./components/Space";
 
 function App() {
-	const [simple, _] = useState<boolean>(true);
+	const [simple] = useState<boolean>(true);
 	//const [motion, setMotion] = useState<boolean>(true);
 
 	//const projects ;
 	
 	return (
 		<>
-			<Header/>
+			<Header simple={simple} githubUrl="https://github.com/ammar-az" />
 
 			{simple ? (
 				<Simple/>

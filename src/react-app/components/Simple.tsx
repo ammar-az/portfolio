@@ -1,50 +1,39 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import type { Project } from "../types/project";
 import { projects } from "../data/projects";
 import ProjectCard from "./ProjectCard";
 import ProjectView from "./ProjectView";
-import { Project } from "../types/project";
+import "../styles/simple-mode.css";
 
-import "../App.css";
+type SimpleProps = { onSpaceMode?: () => void };
 
-export default function Simple(){
-    const [activeProject, setActiveProject] = useState<Project | undefined>();
+export default function Simple({ onSpaceMode }: SimpleProps) {
+    const [activeProject, setActiveProject] = useState<Project | null>(null);
 
-    function handleProjectOpen(project: Project){
-        setActiveProject(project);
-    }
-
-    function handleProjectClose(){
-        setActiveProject(undefined);
-    }
-
-
-    useEffect(() => {
-        document.body.style.overflow = activeProject ? "hidden" : "";
-
-        return () => {
-            document.body.style.overflow = "";
-        };
-    }, [activeProject]);
-    
     return (
-            <div className="app">
-                
-                {activeProject && (
-                    <div className="cover">
-                    <ProjectView project={activeProject} onClose={handleProjectClose}/>
-                    </div>
-                )}
-
-                <section className="intro">
-                    <h2>Work in progress!</h2>
-                    <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.</p>
-                </section>
-
-                <div className="card-layout">
-                    {projects.map((project) => (
-                        <ProjectCard project={project} onClick={()=>handleProjectOpen(project)} />
-                    ))}
+        <main className="simple-page">
+            <section className="intro" aria-labelledby="intro-title">
+                <span className="intro-eyebrow">Welcome to my portfolio</span>
+                <h1 id="intro-title">Ammar <span>Zaghloul</span></h1>
+                <p className="intro-role">Full-Stack Developer</p>
+                <p className="intro-description">I would introduce myself but this page isn't quite ready yet...</p>
+                <div className="intro-actions">
+                    <a className="button button-primary" href="#projects">View my projects <span aria-hidden="true">↓</span></a>
+                    {onSpaceMode ? (
+                        <button type="button" className="button" onClick={onSpaceMode}>Explore space mode <span aria-hidden="true">↗</span></button>
+                    ) : <span className="intro-space-note">Interactive space mode<span>Coming soon</span></span>}
                 </div>
-            </div>
+            </section>
+            <section id="projects" className="projects-section" aria-labelledby="projects-title">
+                <div className="projects-heading">
+                    <h2 id="projects-title">Projects</h2>
+                    <p>A collection of applications I've built.</p>
+                </div>
+                <div className="card-layout">
+                    {projects.map(project => <ProjectCard key={project.subdomain} project={project} onClick={() => setActiveProject(project)} />)}
+                </div>
+            </section>
+            {activeProject && <ProjectView key={activeProject.subdomain} project={activeProject} onClose={() => setActiveProject(null)} />}
+        </main>
     );
 }

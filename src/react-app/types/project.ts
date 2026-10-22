@@ -37,6 +37,9 @@ export type Project = {
     description: string;
     logo: SvgIcon;
     githubUrl?: string;
+    logoIsPlaceholder?: boolean;
+    featuredTechnologies: Technology[];
+    liveUrl?: string;
     images: ProjectImage[];
     stack: StackGroup[];
 };

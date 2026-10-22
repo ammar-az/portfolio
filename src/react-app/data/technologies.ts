@@ -4,6 +4,9 @@ import AxiosLogo from "../assets/technologies/axios.svg?react";
 import AzureLogo from "../assets/technologies/azure.svg?react";
 import AzureSqlLogo from "../assets/technologies/azuresql.svg?react";
 import CloudflareLogo from "../assets/technologies/cloudflare.svg?react";
+import CloudflareWorkersLogo from "../assets/technologies/cloudflareworkers.svg?react";
+import HonoLogo from "../assets/technologies/hono.svg?react";
+import TailwindCssLogo from "../assets/technologies/tailwindcss.svg?react";
 import CSharpLogo from "../assets/technologies/csharp.svg?react";
 import CssLogo from "../assets/technologies/css3.svg?react";
 import DockerLogo from "../assets/technologies/docker.svg?react";
@@ -30,8 +33,20 @@ export const technologies = {
         logo: AzureSqlLogo,
     },
     cloudflare: {
-        name: "Cloudflare Workers",
+        name: "Cloudflare",
         logo: CloudflareLogo,
+    },
+    cloudflareworkers: {
+        name: "Cloudflare Workers",
+        logo: CloudflareWorkersLogo,
+    },
+    hono: {
+        name: "Hono",
+        logo: HonoLogo,
+    },
+    tailwindcss: {
+        name: "Tailwind CSS",
+        logo: TailwindCssLogo,
     },
     csharp: {
         name: "C#",
