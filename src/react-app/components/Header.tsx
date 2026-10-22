@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import PortfolioLogo from "./PortfolioLogo";
 
 type HeaderProps = {
     simple?: boolean;
@@ -14,7 +15,7 @@ export default function Header({ simple = true, onModeChange, resumeUrl, githubU
         <>
             <header className="header">
                 <a className="header-brand" href="/" aria-label="AmmarZ home">
-                    <span className="header-monogram" aria-hidden="true">AZ</span>
+                    <PortfolioLogo className="header-monogram" aria-hidden="true" />
                     <span>AmmarZ</span>
                 </a>
                 <nav className="header-nav" aria-label="Main navigation">

@@ -21,26 +21,25 @@
 }
 
 .intro h1 {
-    margin: 0.2rem 0 0.35rem;
+    position: relative;
+    width: fit-content;
+    margin: 0.2rem auto 0.65rem;
+    padding-bottom: 0.2em;
     font-size: clamp(3.5rem, 4.2vw, 5rem);
     font-weight: 750;
     line-height: 1.15;
     letter-spacing: -0.045em;
 }
 
-.intro h1 span {
-    position: relative;
-}
-
-.intro h1 span::after {
+.intro h1::after {
     content: "";
     position: absolute;
     height: 3px;
-    width: 180%;
-    right: 0;
-    bottom: -0.1rem;
-    background: #8773ff;
-    transform: rotate(-3deg);
+    width: 42%;
+    left: 50%;
+    bottom: 0;
+    background: linear-gradient(90deg, #607a90, var(--color-accent-highlight) 48%, var(--color-accent));
+    transform: translateX(-50%) rotate(-0.5deg);
     border-radius: 100%;
 }
 
@@ -85,7 +84,7 @@
 
 .projects-section {
     margin-top: 0.75rem;
-    scroll-margin-top: 1.5rem;
+    scroll-margin-top: 6rem;
 }
 
 .projects-heading {
@@ -127,8 +126,8 @@
 }
 
 .card:hover {
-    border-color: #b7b0d1;
-    box-shadow: 0 0 24px #9686ff20;
+    border-color: var(--color-accent-highlight);
+    box-shadow: 0 0 24px var(--color-accent-glow);
     transform: translateY(-3px);
 }
 

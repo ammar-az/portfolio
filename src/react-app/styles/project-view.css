@@ -58,7 +58,7 @@
 }
 
 .project-heading h2 a:hover {
-    color: #d7d0ff;
+    color: var(--color-accent-highlight);
 }
 
 .external-mark {

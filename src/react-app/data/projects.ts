@@ -3,18 +3,18 @@ import { technologies as tech } from "./technologies";
 import Wasp from "../assets/logos/word-wasp.svg?react";
 import Tasked from "../assets/logos/tasked-ico.svg?react";
 import FutureProject from "../assets/logos/future-project.svg?react";
+import PortfolioLogo from "../components/PortfolioLogo";
 
 export const projects: Project[] = [
     {
         name: "Portfolio",
-        logoIsPlaceholder: true,
         featuredTechnologies: [tech.react, tech.typescript, tech.vite],
         subdomain: "portfolio",
         liveUrl: "https://ammarz.com",
         githubUrl: "https://github.com/ammar-az/portfolio",
         summary: "My personal developer portfolio.",
         description: "A portfolio showcasing my projects.",
-        logo: FutureProject,
+        logo: PortfolioLogo,
         images: [],
         stack: [
             { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite] },
