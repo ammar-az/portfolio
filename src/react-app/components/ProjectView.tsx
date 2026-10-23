@@ -7,11 +7,15 @@ type ProjectViewProps = { project: Project; onClose: () => void };
 
 export default function ProjectView({ project, onClose }: ProjectViewProps) {
     const dialogRef = useRef<HTMLDialogElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
     const titleId = useId();
     const [imageIndex, setImageIndex] = useState(0);
     const Logo = project.logo;
     const selectedImage = project.images[imageIndex];
     const liveUrl = project.liveUrl;
+    const navigateImage = (direction: number) => {
+        setImageIndex(index => (index + direction + project.images.length) % project.images.length);
+    };
 
     useEffect(() => {
         const dialog = dialogRef.current;
@@ -28,7 +32,20 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
     }, []);
 
     return (
-        <dialog ref={dialogRef} className="project-dialog" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }}>
+        <dialog ref={dialogRef} className="project-dialog" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }} onKeyDown={event => {
+            if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            if (event.target instanceof HTMLElement && (event.target.isContentEditable || event.target.closest("input, textarea, select"))) return;
+            if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+                event.preventDefault();
+                event.stopPropagation();
+                contentRef.current?.focus({ preventScroll: true });
+                if (project.images.length > 1) navigateImage(event.key === "ArrowLeft" ? -1 : 1);
+            } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                event.preventDefault();
+                event.stopPropagation();
+                contentRef.current?.scrollBy({ top: event.key === "ArrowUp" ? -60 : 60, behavior: "instant" });
+            }
+        }}>
             <header className="project-heading">
                 <Logo className={`project-logo${project.logoBackground ? ` logo-background-${project.logoBackground}` : ""}`} aria-hidden="true" />
                 <div className="project-heading-copy">
@@ -37,13 +54,17 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
                 </div>
                 <button type="button" className="icon-button project-close" aria-label="Close project details" onClick={onClose} autoFocus>×</button>
             </header>
-            <div className="project-content">
+            <div ref={contentRef} className="project-content" tabIndex={-1}>
                 <div className="project-visual">
                     <section className="project-gallery" aria-label={`${project.name} screenshots`}>
                         <div className="project-image-frame">
-                            {selectedImage ? <img src={selectedImage.src} alt={selectedImage.alt} /> : <div className="project-image-empty"><Logo aria-hidden="true" /><p>{project.name}</p></div>}
+                            {selectedImage ? <img src={selectedImage.src} alt={selectedImage.alt} draggable={false} /> : <div className="project-image-empty"><Logo aria-hidden="true" /><p>{project.name}</p></div>}
+                            {project.images.length > 1 && <>
+                                <button type="button" className="project-gallery-arrow project-gallery-previous" aria-label="Previous screenshot" onClick={() => navigateImage(-1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg></button>
+                                <button type="button" className="project-gallery-arrow project-gallery-next" aria-label="Next screenshot" onClick={() => navigateImage(1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
+                            </>}
                         </div>
-                        {selectedImage && <div className="project-image-caption"><span>{selectedImage.alt}</span>{project.images.length > 1 && <span>{imageIndex + 1} / {project.images.length}</span>}</div>}
+                        {selectedImage && <div className="project-image-caption" aria-live="polite" aria-atomic="true"><span>{selectedImage.alt}</span>{project.images.length > 1 && <span>{imageIndex + 1} / {project.images.length}</span>}</div>}
                         {project.images.length > 1 && <div className="project-thumbnails" aria-label="Choose screenshot">
                             {project.images.map((image, index) => <button type="button" key={image.src} className="project-thumbnail" aria-label={`Show ${image.alt}`} aria-pressed={imageIndex === index} onClick={() => setImageIndex(index)}><img src={image.src} alt="" loading="lazy" /></button>)}
                         </div>}
