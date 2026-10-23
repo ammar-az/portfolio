@@ -15,7 +15,7 @@ function App() {
 	
 	return (
 		<>
-			<Header simple={simple} githubUrl="https://github.com/ammar-az" />
+			<Header simple={simple} githubUrl="https://github.com/ammar-az" linkedinUrl="https://www.linkedin.com/in/ammar-zaghloul/" />
 
 			{simple ? (
 				<Simple/>

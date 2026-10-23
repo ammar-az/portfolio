@@ -62,10 +62,10 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
                 </div>
                 <section className="project-about" aria-labelledby={`${titleId}-about`}>
                     <div className="project-description"><h3 id={`${titleId}-about`}>About the project</h3>{project.description.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)}</div>
-                    {(liveUrl || project.githubUrl) && <div className="project-links">
+                    {(liveUrl || !!project.repositories?.length) && <div className="project-links">
                         <div className="project-link-buttons">
                             {liveUrl && <a className="button button-primary" href={liveUrl} target="_blank" rel="noopener noreferrer">Live project ↗</a>}
-                            {project.githubUrl && <a className="button" href={project.githubUrl} target="_blank" rel="noopener noreferrer">GitHub ↗</a>}
+                            {project.repositories?.map(repository => <a className="button" key={repository.url} href={repository.url} target="_blank" rel="noopener noreferrer">{repository.label} ↗</a>)}
                         </div>
                         {liveUrl && <a className="project-domain" href={liveUrl} target="_blank" rel="noopener noreferrer">{new URL(liveUrl).hostname}</a>}
                     </div>}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" fill="none">
+  <defs>
+    <linearGradient id="ltg-surface" x1="12" y1="4" x2="112" y2="124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9678FF"/>
+      <stop offset="0.5" stop-color="#7958F1"/>
+      <stop offset="1" stop-color="#5C40D1"/>
+    </linearGradient>
+    <linearGradient id="ltg-note" x1="39" y1="22" x2="78" y2="98" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF4CF"/>
+      <stop offset="1" stop-color="#F2C567"/>
+    </linearGradient>
+    <linearGradient id="ltg-light" x1="18" y1="8" x2="86" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#FFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#ltg-surface)"/>
+  <rect x="5" y="5" width="118" height="118" rx="27" stroke="#C1AFFF" stroke-opacity="0.25"/>
+  <path d="M32 5h64a27 27 0 0 1 27 27v19C86 66 49 69 5 81V32A27 27 0 0 1 32 5Z" fill="url(#ltg-light)"/>
+  <circle cx="65" cy="65" r="44" stroke="#C0AEFF" stroke-opacity="0.12"/>
+  <circle cx="65" cy="65" r="35" stroke="#C0AEFF" stroke-opacity="0.1"/>
+  <g transform="translate(5 7.5)">
+  <path d="M47 85V42c0-14 10-22 23-22 12 0 22 8 22 20 0 10-6 15-14 20-4 3-5 6-5 10" stroke="#24134F" stroke-opacity="0.35" stroke-width="10" stroke-linecap="round" transform="translate(0 2)"/>
+  <path d="M47 83V40c0-12 10-20 23-20 12 0 22 8 22 20 0 10-6 15-14 20-4 3-5 6-5 10" stroke="url(#ltg-note)" stroke-width="9" stroke-linecap="round"/>
+  <ellipse cx="36" cy="87" rx="15" ry="10" transform="rotate(-20 36 87)" fill="url(#ltg-note)"/>
+  <circle cx="73" cy="86" r="5.5" fill="url(#ltg-note)"/>
+  </g>
+</svg>

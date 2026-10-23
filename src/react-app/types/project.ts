@@ -36,7 +36,7 @@ export type Project = {
     summary: string;
     description: string;
     logo: SvgIcon;
-    githubUrl?: string;
+    repositories?: { label: string; url: string }[];
     logoIsPlaceholder?: boolean;
     featuredTechnologies: Technology[];
     liveUrl?: string;

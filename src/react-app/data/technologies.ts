@@ -18,8 +18,18 @@ import ReactLogo from "../assets/technologies/react.svg?react";
 import ReactRouterLogo from "../assets/technologies/react-router.svg?react";
 import TypeScriptLogo from "../assets/technologies/typescript.svg?react";
 import ViteLogo from "../assets/technologies/vite.svg?react";
+import AngularLogo from "../assets/technologies/angular.svg?react";
+import CppLogo from "../assets/technologies/cplusplus.svg?react";
 
 export const technologies = {
+    angular: {
+        name: "Angular",
+        logo: AngularLogo,
+    },
+    cpp: {
+        name: "C++",
+        logo: CppLogo,
+    },
     axios: {
         name: "Axios",
         logo: AxiosLogo,
