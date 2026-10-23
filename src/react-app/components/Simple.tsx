@@ -35,7 +35,7 @@ export default function Simple({ onSpaceMode }: SimpleProps) {
                 <span className="intro-eyebrow">Welcome to my portfolio</span>
                 <h1 id="intro-title">Ammar <span>Zaghloul</span></h1>
                 <p className="intro-role">Full-Stack Developer</p>
-                <p className="intro-description">I would introduce myself but this page isn't quite ready yet...</p>
+                <p className="intro-description">I create interesting applications. Some of them might even be useful.</p>
                 <div className="intro-actions">
                     <a className="button button-primary" href="#projects">View my projects <span aria-hidden="true">↓</span></a>
                     {onSpaceMode ? (

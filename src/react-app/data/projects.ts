@@ -9,12 +9,12 @@ import ThemeGuessLogo from "../components/ThemeGuessLogo";
 export const projects: Project[] = [
     {
         name: "Portfolio",
-        featuredTechnologies: [tech.react, tech.typescript, tech.vite],
+        featuredTechnologies: [],
         subdomain: "portfolio",
         liveUrl: "https://ammarz.com",
         repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/portfolio" }],
         summary: "My personal developer portfolio.",
-        description: "A portfolio showcasing my projects.",
+        description: "A simple home for my projects. Something a little more interactive is coming Soon™.",
         logo: PortfolioLogo,
         images: [],
         stack: [
@@ -24,7 +24,7 @@ export const projects: Project[] = [
     },
     {
         name: "Tasked",
-        featuredTechnologies: [tech.csharp, tech.aspnet, tech.sqlserver, tech.react],
+        featuredTechnologies: [tech.csharp, tech.aspnet, tech.sqlserver, tech.azure],
         subdomain: "tasked",
         repositories: [
             { label: "GitHub: Frontend", url: "https://github.com/ammar-az/tasked-frontend" },
@@ -32,10 +32,10 @@ export const projects: Project[] = [
         ],
         liveUrl: "https://tasked.ammarz.com",
         summary: "Collaborative project and task management.",
-        description: `Tasked is a full-stack project management application for creating projects, managing tasks, and collaborating with others. User-created projects and the corresponding tasks within them are the core of Tasked. Tasks can be created, updated, searched, and filtered by status in order to organize projects and keep track of work at all stages of completion. Tasked supports projects as simple as private to-do lists or as complex as multi-user group work with configurable project settings such as join policies and visibility. Role-based authorization of project members allow users to designate trusted contributors or admins as required. Server-side authorization ensures that users can only access resources as permitted, and refresh-token based authentication handles user sessions.
-        \n\nTasked is a fully functional and deployed application, but I initially started Tasked to learn new technologies and refine some of my less tested skills. My primary goals were to learn C# and its ecosystem, deploy a containerized application using Docker, and familiarize myself with Azure deployment.
-        \n\nTasked's frontend is built with React, Typescript, and React Router's framework mode. An Axios-based HTTP client communicates with the backend and the application handles routing, tracks authentication state, and provides a simple interface for projects and tasks.
-        \n\nTasked's backend consists of an ASP.NET Core web application and a Microsoft SQL Server database. The web application handles application logic, authentication, enforces authorization rules, and exposes a RESTful API through ASP.NET Core controllers. Authentication uses JWT access tokens and HttpOnly cookies for refresh-token management. The API supports CRUD operations and searchable, sortable, filterable, and paginated data retrieval. Entity Framework Core maps application entities to the database, and schema migrations. The backend is containerized with Docker and deployed to Azure App Service, with Azure SQL hosting the database.`,
+        description: `Tasked is a full-stack project management application for organizing tasks and collaborating with configurable project memberships and role-based permissions.
+        I built it to learn C# through a common backend stack: an ASP.NET Core API backed by SQL Server, with Entity Framework Core handling object-relational mapping and database migrations.
+        The backend is responsible for authentication, session management using refresh tokens, authorization, and application logic for managing projects and tasks.
+        The API is containerized with Docker and deployed to Azure App Service, with Azure SQL Database hosting application data.`,
         logo: Tasked,
         images: [
             { src: "/projects/tasked/tasked.jpg", alt: "Tasked project workspace with task search, status filters, and task details" },
@@ -47,7 +47,7 @@ export const projects: Project[] = [
             { src: "/projects/tasked/tasked-myacc.jpg", alt: "Account page with project memberships, assigned tasks, and invitations tabs" },
             { src: "/projects/tasked/tasked-orgs.jpg", alt: "Searchable list of organizations" },
             { src: "/projects/tasked/tasked-org.jpg", alt: "Organization page with projects and a members tab" },
-            { src: "/projects/tasked/tasked-stack.jpg", alt: "Tasked architecture showing frontend, backend API, database, and hosting technologies" },
+            { src: "/projects/tasked/tasked-stack.jpg", alt: "Tasked architecture showing frontend, backend API, database, and deployment technologies" },
         ],
         stack: [
             { category: "frontend", technologies: [tech.react, tech.typescript, tech.reactrouter, tech.axios] },
@@ -58,18 +58,20 @@ export const projects: Project[] = [
     },
     {
         name: "LoL Theme Guess",
-        featuredTechnologies: [tech.react, tech.typescript, tech.hono, tech.cloudflareworkers],
+        featuredTechnologies: [tech.react, tech.typescript, tech.tailwindcss, tech.cloudflareworkers],
         subdomain: "ltg",
         liveUrl: "https://ltg.ammarz.com",
         summary: "A League of Legends theme guessing game.",
-        description: "Guess League of Legends themes.",
+        description: `LoL Theme Guess is a game where players score points by listening to snippets of champion themes from League of Legends and guessing the champion.
+        Players can configure the number of rounds, duration of snippets, and whether snippets come from random points in the song.
+        Single-player and multiplayer gameplay are both supported, with Cloudflare Durable Objects handling unique lobby instances and synchronizing game state through WebSockets.`,
         logo: ThemeGuessLogo,
         images: [
             { src: "/projects/ltg/ltg.jpg", alt: "Theme guessing round with a countdown, guess input, and four players" },
             { src: "/projects/ltg/ltg-win-lose.jpg", alt: "Revealed champion theme with correct and incorrect player guesses" },
             { src: "/projects/ltg/ltg-home.jpg", alt: "LoL Theme Guess home screen with solo and multiplayer options" },
             { src: "/projects/ltg/ltg-lobby-wait.jpg", alt: "Multiplayer lobby with waiting and ready players" },
-            { src: "/projects/ltg/ltg-guessed.jpg", alt: "Player cards showing a player with a submitted guess during a round and a player who has yet to guess" },
+            { src: "/projects/ltg/ltg-guessed.jpg", alt: "Player cards showing a player with a submitted guess during a round alongside a player who has yet to guess" },
         ],
         stack: [
             { category: "frontend", technologies: [tech.typescript, tech.react, tech.tailwindcss] },
@@ -84,7 +86,9 @@ export const projects: Project[] = [
         repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/word-wasp" }],
         liveUrl: "https://word-wasp.ammarz.com",
         summary: "A word puzzle game inspired by NYT Spelling Bee.",
-        description: "NYT spelling bee clone",
+        description: `It seems like Wordle clones are some of the most popular first projects out there, so I decided to do something different and create a version of the less popular Spelling Bee game.
+                    The focus of this project was to recreate a UI with the iconic honeycomb grid and hexagonal letter tiles.
+                    Unlike the daily format of Spelling Bee, Word Wasp lets players freely start new puzzles and choose between easy and hard word lists.`,
         logo: Wasp,
         logoBackground: "light",
         images: [{ src: "/projects/word-wasp/word-wasp.jpg", alt: "Word Wasp puzzle with letter tiles, guessed words, and score" }, { src: "/projects/word-wasp/word-wasp-light.jpg", alt: "Word Wasp puzzle with a white background" }],
@@ -115,5 +119,5 @@ export const projects: Project[] = [
         stack: [{ category: "backend", technologies: [tech.cpp] }]
     },
 
-    
+
 ];

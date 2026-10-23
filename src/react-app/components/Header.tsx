@@ -67,7 +67,14 @@ export default function Header({ simple = true, onModeChange, githubUrl, linkedi
                     <h2 id="about-title">About Ammar Zaghloul</h2>
                     <button type="button" className="icon-button" aria-label="Close about" onClick={() => aboutRef.current?.close()}>×</button>
                 </div>
-                <p>I would tell you about myself but this website isn't ready yet... Explore a project to see the application, its technology stack, and how it was built.</p>
+                <p>
+                    As you can probably tell from the rest of the website, my name is Ammar, and I'm a software developer. I started coding in tenth grade for an elective course, and I enjoyed it enough that I went on to earn a BSc in Computer Science at the University of Calgary.
+                    Since graduating, I've been working on personal projects and picking up technologies I didn't work with during my degree. Whether I create a multiplayer game or task management application, learning new skills and improving existing ones is what keeps software development interesting to me.
+                </p>
+                <p>
+                    My other interests include gaming, amateur astronomy, and PC hardware.
+                    I'm currently looking for opportunities to start my career in software development.
+                </p>
             </dialog>
         </>
     );

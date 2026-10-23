@@ -35,7 +35,7 @@ export const technologies = {
         logo: AxiosLogo,
     },
     azure: {
-        name: "Azure App Service",
+        name: "Azure",
         logo: AzureLogo,
     },
     azuresql: {

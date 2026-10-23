@@ -219,3 +219,7 @@
 .about-dialog p {
     color: var(--color-muted);
 }
+
+.about-dialog p + p {
+    margin-top: 1rem;
+}
