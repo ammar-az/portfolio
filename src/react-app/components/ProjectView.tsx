@@ -30,7 +30,7 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
     return (
         <dialog ref={dialogRef} className="project-dialog" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }}>
             <header className="project-heading">
-                <Logo className="project-logo" aria-hidden="true" />
+                <Logo className={`project-logo${project.logoBackground ? ` logo-background-${project.logoBackground}` : ""}`} aria-hidden="true" />
                 <div className="project-heading-copy">
                     <h2 id={titleId}>{liveUrl ? <a href={liveUrl} target="_blank" rel="noopener noreferrer">{project.name} <span className="external-mark" aria-label="opens in a new tab">↗</span></a> : project.name}</h2>
                     <p>{project.summary}</p>
@@ -63,7 +63,7 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
                 <section className="project-about" aria-labelledby={`${titleId}-about`}>
                     <div className="project-description"><h3 id={`${titleId}-about`}>About the project</h3>{project.description.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)}</div>
                     {(liveUrl || !!project.repositories?.length) && <div className="project-links">
-                        <div className="project-link-buttons">
+                        <div className={`project-link-buttons${liveUrl && (project.repositories?.length ?? 0) > 1 ? " project-link-buttons-multiple-repos" : ""}`}>
                             {liveUrl && <a className="button button-primary" href={liveUrl} target="_blank" rel="noopener noreferrer">Live project ↗</a>}
                             {project.repositories?.map(repository => <a className="button" key={repository.url} href={repository.url} target="_blank" rel="noopener noreferrer">{repository.label} ↗</a>)}
                         </div>

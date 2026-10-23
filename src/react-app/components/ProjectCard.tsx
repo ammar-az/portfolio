@@ -14,7 +14,7 @@ export default function ProjectCard({ project, onClick }: ProjectCardProps) {
                 )}
             </span>
             <span className="card-info">
-                <span className={`card-logo-frame${project.logoIsPlaceholder ? " card-logo-placeholder" : ""}`}><Logo className="card-logo" aria-hidden="true" /></span>
+                <span className={`card-logo-frame${project.logoBackground ? ` logo-background-${project.logoBackground}` : ""}`}><Logo className="card-logo" aria-hidden="true" /></span>
                 <span className="card-copy">
                     <span className="card-name">{project.name}</span>
                     <span className="card-summary">{project.summary}</span>

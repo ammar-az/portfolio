@@ -37,7 +37,7 @@ export type Project = {
     description: string;
     logo: SvgIcon;
     repositories?: { label: string; url: string }[];
-    logoIsPlaceholder?: boolean;
+    logoBackground?: "light" | "dark";
     featuredTechnologies: Technology[];
     liveUrl?: string;
     images: ProjectImage[];

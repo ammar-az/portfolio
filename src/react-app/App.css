@@ -4,6 +4,21 @@
     padding: 0.75rem 4.8vw 3rem;
 }
 
+.logo-background-light {
+    padding: 0.35rem;
+    background: #aeb5be;
+    border: 1px solid var(--color-border);
+    border-radius: 0.85rem;
+}
+
+.logo-background-dark {
+    padding: 0.25rem;
+    background: #0f1215;
+    border: 1px solid #69717b;
+    border-radius: 0.85rem;
+    overflow: hidden;
+}
+
 .header {
     position: sticky;
     top: 0.75rem;

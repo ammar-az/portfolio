@@ -19,7 +19,7 @@ export const projects: Project[] = [
         images: [],
         stack: [
             { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite] },
-            { category: "deployment", technologies: [tech.cloudflareworkers, tech.cloudflare] },
+            { category: "deployment", technologies: [tech.cloudflare] },
         ]
     },
     {
@@ -86,6 +86,7 @@ export const projects: Project[] = [
         summary: "A word puzzle game inspired by NYT Spelling Bee.",
         description: "NYT spelling bee clone",
         logo: Wasp,
+        logoBackground: "light",
         images: [{ src: "/projects/word-wasp/word-wasp.jpg", alt: "Word Wasp puzzle with letter tiles, guessed words, and score" }, { src: "/projects/word-wasp/word-wasp-light.jpg", alt: "Word Wasp puzzle with a white background" }],
         stack: [
             { category: "frontend", technologies: [tech.react, tech.typescript, tech.css] },
@@ -93,7 +94,7 @@ export const projects: Project[] = [
     },
     {
         name: "Future Project",
-        logoIsPlaceholder: true,
+        logoBackground: "dark",
         featuredTechnologies: [tech.angular],
         subdomain: "potential",
         summary: "A project yet to come.",
@@ -104,7 +105,7 @@ export const projects: Project[] = [
     },
     {
         name: "Future Project",
-        logoIsPlaceholder: true,
+        logoBackground: "dark",
         featuredTechnologies: [tech.cpp],
         subdomain: "potential-cpp",
         summary: "A project yet to come.",
