@@ -198,6 +198,13 @@
     border: 1px solid var(--color-border);
     border-radius: 1rem;
     box-shadow: 0 24px 90px #0008;
+    max-height: calc(100dvh - 2rem);
+    overflow: hidden;
+}
+
+.about-dialog[open] {
+    display: flex;
+    flex-direction: column;
 }
 
 .about-dialog::backdrop {
@@ -210,6 +217,14 @@
     align-items: center;
     gap: 1rem;
     margin-bottom: 1rem;
+    flex-shrink: 0;
+}
+
+.about-content {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
 }
 
 .about-heading h2 {
@@ -222,4 +237,184 @@
 
 .about-dialog p + p {
     margin-top: 1rem;
+}
+
+.mobile-menu-toggle,
+.mobile-link-label {
+    display: none;
+}
+
+.mobile-menu {
+    width: min(26rem, calc(100% - 1.5rem));
+    max-width: none;
+    max-height: calc(100dvh - 1.5rem);
+    margin: auto;
+    padding: 20px;
+    overflow: hidden;
+    color: var(--color-text);
+    background: linear-gradient(125deg, #1b2026, #15191e);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    box-shadow: 0 24px 90px #0008;
+}
+
+.mobile-menu[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-menu::backdrop {
+    background: #080a0dc9;
+    backdrop-filter: blur(2px);
+}
+
+.mobile-menu-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    flex-shrink: 0;
+}
+
+.mobile-menu-heading h2 {
+    font-size: 1.4rem;
+}
+
+.mobile-menu nav {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.mobile-menu .header-personal-links {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.85rem 0;
+}
+
+.mobile-menu .header-link {
+    justify-content: flex-start;
+    min-height: 2.75rem;
+    padding: 0.65rem 0.75rem;
+    gap: 0.65rem;
+    font-size: 1rem;
+    border-radius: 0.6rem;
+}
+
+.mobile-menu .header-link:not(.header-link-unavailable):hover {
+    background: #ffffff08;
+}
+
+.mobile-menu .mobile-link-label {
+    display: inline;
+}
+
+.mobile-menu .header-link-unavailable .mobile-link-label {
+    margin-left: auto;
+    font-size: 0.75rem;
+}
+
+.mobile-menu .header-link-unavailable {
+    flex-wrap: wrap;
+}
+
+.mobile-menu .header-mode-control {
+    border-left: 0;
+    border-top: 1px solid var(--color-border-subtle);
+    padding: 1rem 0 0;
+}
+
+.mobile-menu .mode-selector {
+    width: 100%;
+}
+
+.mobile-menu .mode-selector button {
+    min-height: 2.75rem;
+    flex: 1;
+}
+
+.mobile-menu .mode-unavailable {
+    width: 100%;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+@media (max-width: 59.999rem) {
+    #root {
+        padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+
+    .header {
+        top: max(8px, env(safe-area-inset-top));
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .header-brand {
+        gap: 12px;
+        min-height: 2.75rem;
+        font-size: 1.2rem;
+    }
+
+    .header-nav {
+        display: none;
+    }
+
+    .header-monogram {
+        width: 35px;
+        height: 35px;
+    }
+
+    .icon-button {
+        width: 44px;
+        height: 44px;
+        font-size: 28px;
+    }
+
+    .mobile-menu-toggle {
+        display: inline-flex;
+    }
+
+    .mobile-menu-toggle svg {
+        width: 1.35rem;
+        height: 1.35rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+    }
+
+    .about-dialog {
+        width: min(34rem, calc(100% - 1.5rem));
+        max-width: none;
+        max-height: calc(100dvh - 1.5rem);
+        padding: 20px;
+    }
+
+    .about-heading {
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .about-heading h2 {
+        font-size: 1.3rem;
+        overflow-wrap: anywhere;
+    }
+
+    .about-content {
+        padding: 0.2rem;
+        font-size: 1rem;
+        line-height: 1.65;
+    }
+}
+
+@media (pointer: coarse) {
+    .header-link,
+    .mode-selector button {
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+    }
 }

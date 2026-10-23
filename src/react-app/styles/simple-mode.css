@@ -125,10 +125,12 @@
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
-.card:hover {
-    border-color: var(--color-accent-highlight);
-    box-shadow: 0 0 24px var(--color-accent-glow);
-    transform: translateY(-3px);
+@media (hover: hover) and (pointer: fine) {
+    .card:hover {
+        border-color: var(--color-accent-highlight);
+        box-shadow: 0 0 24px var(--color-accent-glow);
+        transform: translateY(-3px);
+    }
 }
 
 .card-preview {
@@ -228,4 +230,97 @@
     font-size: 1.7rem;
     line-height: 1;
     color: #c4cbd6;
+}
+
+@media (max-width: 74.999rem) {
+    .card-layout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 59.999rem) {
+    .intro {
+        margin-top: 1.75rem;
+        padding: 0;
+    }
+
+    .intro h1 {
+        font-size: clamp(2.5rem, 7.5vw, 4rem);
+        text-wrap: balance;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .intro-role {
+        font-size: 1.2rem;
+    }
+
+    .intro-description {
+        max-width: 40rem;
+        font-size: 1rem;
+    }
+
+    .intro-actions {
+        flex-wrap: wrap;
+    }
+
+    .projects-section {
+        margin-top: 2rem;
+        scroll-margin-top: calc(5.5rem + env(safe-area-inset-top));
+    }
+
+    .card-name,
+    .card-summary,
+    .technology-tag {
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 39.999rem) {
+    .card-layout {
+        grid-template-columns: minmax(0, 1fr);
+        grid-auto-rows: auto;
+    }
+
+    .intro-eyebrow {
+        font-size: 0.6rem;
+        letter-spacing: 0.22em;
+    }
+
+    .intro-actions {
+        max-width: 24rem;
+        margin: 1.25rem auto 0;
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .intro-space-note {
+        align-items: center;
+        text-align: center;
+        padding: 0.55rem 0.75rem;
+    }
+
+    .card-info {
+        gap: 10px;
+        padding: 0.9rem 0.1rem 0.3rem;
+    }
+
+    .card-logo-frame {
+        width: 44px;
+        height: 44px;
+    }
+
+    .card-name {
+        font-size: 1.1rem;
+    }
+
+    .card-summary {
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    .technology-tag {
+        font-size: 0.72rem;
+        padding: 0.15rem 0.5rem;
+    }
 }

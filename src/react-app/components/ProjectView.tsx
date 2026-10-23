@@ -2,11 +2,12 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { Project } from "../types/project";
 import { stackLabels } from "../types/project";
 import "../styles/project-view.css";
+import useModalDialog from "../hooks/useModalDialog";
 
 type ProjectViewProps = { project: Project; onClose: () => void };
 
 export default function ProjectView({ project, onClose }: ProjectViewProps) {
-    const dialogRef = useRef<HTMLDialogElement>(null);
+    const { dialogRef, open, close, restore } = useModalDialog();
     const contentRef = useRef<HTMLDivElement>(null);
     const titleId = useId();
     const [imageIndex, setImageIndex] = useState(0);
@@ -18,21 +19,24 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
     };
 
     useEffect(() => {
-        const dialog = dialogRef.current;
-        if (!dialog) return;
-        const previousFocus = document.activeElement;
-        const previousOverflow = document.body.style.overflow;
-        dialog.showModal();
-        document.body.style.overflow = "hidden";
-        return () => {
-            dialog.close();
-            document.body.style.overflow = previousOverflow;
-            if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
-        };
-    }, []);
+        open();
+        dialogRef.current?.querySelector<HTMLButtonElement>(".project-close")?.focus({ preventScroll: true });
+        return close;
+    }, [open, close, dialogRef]);
+
+    useEffect(() => {
+        const thumbnail = contentRef.current?.querySelector<HTMLButtonElement>('.project-thumbnail[aria-pressed="true"]');
+        const strip = thumbnail?.parentElement;
+        if (!thumbnail || !strip) return;
+        // Move only the horizontal strip; scrollIntoView would also move the dialog body.
+        const item = thumbnail.getBoundingClientRect();
+        const frame = strip.getBoundingClientRect();
+        if (item.left < frame.left) strip.scrollLeft -= frame.left - item.left + 4;
+        else if (item.right > frame.right) strip.scrollLeft += item.right - frame.right + 4;
+    }, [imageIndex]);
 
     return (
-        <dialog ref={dialogRef} className="project-dialog" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }} onKeyDown={event => {
+        <dialog ref={dialogRef} className="project-dialog" aria-labelledby={titleId} onClose={restore} onCancel={event => { event.preventDefault(); onClose(); }} onKeyDown={event => {
             if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
             if (event.target instanceof HTMLElement && (event.target.isContentEditable || event.target.closest("input, textarea, select"))) return;
             if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
@@ -55,7 +59,7 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
                 <button type="button" className="icon-button project-close" aria-label="Close project details" onClick={onClose} autoFocus>×</button>
             </header>
             <div ref={contentRef} className="project-content" tabIndex={-1}>
-                <div className="project-visual">
+                <div className="project-sections">
                     <section className="project-gallery" aria-label={`${project.name} screenshots`}>
                         <div className="project-image-frame">
                             {selectedImage ? <img src={selectedImage.src} alt={selectedImage.alt} draggable={false} /> : <div className="project-image-empty"><Logo aria-hidden="true" /><p>{project.name}</p></div>}
@@ -69,6 +73,14 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
                             {project.images.map((image, index) => <button type="button" key={image.src} className="project-thumbnail" aria-label={`Show ${image.alt}`} aria-pressed={imageIndex === index} onClick={() => setImageIndex(index)}><img src={image.src} alt="" loading="lazy" /></button>)}
                         </div>}
                     </section>
+                    {(liveUrl || !!project.repositories?.length) && <div className="project-links">
+                        <div className={`project-link-buttons${liveUrl && (project.repositories?.length ?? 0) > 1 ? " project-link-buttons-multiple-repos" : ""}`}>
+                            {liveUrl && <a className="button button-primary" href={liveUrl} target="_blank" rel="noopener noreferrer">Live project ↗</a>}
+                            {project.repositories?.map(repository => <a className="button" key={repository.url} href={repository.url} target="_blank" rel="noopener noreferrer">{repository.label} ↗</a>)}
+                        </div>
+                        {liveUrl && <a className="project-domain" href={liveUrl} target="_blank" rel="noopener noreferrer">{new URL(liveUrl).hostname}</a>}
+                    </div>}
+                    <section className="project-description" aria-labelledby={`${titleId}-about`}><h3 id={`${titleId}-about`}>About the project</h3>{project.description.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)}</section>
                     {project.stack.length > 0 && <section className="project-stack" aria-labelledby={`${titleId}-stack`}>
                         <h3 id={`${titleId}-stack`}>Technology stack</h3>
                         <p className="project-stack-intro">The tools behind {project.name}.</p>
@@ -81,16 +93,6 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
                         </section>)}</div>
                     </section>}
                 </div>
-                <section className="project-about" aria-labelledby={`${titleId}-about`}>
-                    <div className="project-description"><h3 id={`${titleId}-about`}>About the project</h3>{project.description.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)}</div>
-                    {(liveUrl || !!project.repositories?.length) && <div className="project-links">
-                        <div className={`project-link-buttons${liveUrl && (project.repositories?.length ?? 0) > 1 ? " project-link-buttons-multiple-repos" : ""}`}>
-                            {liveUrl && <a className="button button-primary" href={liveUrl} target="_blank" rel="noopener noreferrer">Live project ↗</a>}
-                            {project.repositories?.map(repository => <a className="button" key={repository.url} href={repository.url} target="_blank" rel="noopener noreferrer">{repository.label} ↗</a>)}
-                        </div>
-                        {liveUrl && <a className="project-domain" href={liveUrl} target="_blank" rel="noopener noreferrer">{new URL(liveUrl).hostname}</a>}
-                    </div>}
-                </section>
             </div>
         </dialog>
     );
