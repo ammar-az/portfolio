@@ -10,6 +10,7 @@
 }
 
 .intro-eyebrow {
+    font-family: var(--font-mono);
     display: inline-block;
     padding: 0.3rem 0.75rem;
     border: 1px solid var(--color-border-subtle);
@@ -26,7 +27,7 @@
     margin: 0.2rem auto 0.65rem;
     padding-bottom: 0.2em;
     font-size: clamp(3.5rem, 4.2vw, 5rem);
-    font-weight: 750;
+    font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.045em;
 }
@@ -38,14 +39,15 @@
     width: 42%;
     left: 50%;
     bottom: 0;
-    background: linear-gradient(90deg, #607a90, var(--color-accent-highlight) 48%, var(--color-accent));
+    background: linear-gradient(90deg, #386b87, #67a4be 30%, #b6d7e4 48%, #589bb7 68%, #3d7f9f);
     transform: translateX(-50%) rotate(-0.5deg);
     border-radius: 100%;
 }
 
 .intro-role {
+    font-family: var(--font-mono);
     font-size: 1.4rem;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--color-muted);
 }
 
@@ -66,6 +68,7 @@
 }
 
 .intro-space-note {
+    font-family: var(--font-mono);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -217,6 +220,7 @@
 }
 
 .technology-tag {
+    font-family: var(--font-mono);
     padding: 0.1rem 0.6rem;
     border: 1px solid #4c545f;
     border-radius: 2rem;

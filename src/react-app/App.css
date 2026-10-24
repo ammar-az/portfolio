@@ -113,6 +113,7 @@
 }
 
 .mode-selector {
+    font-family: var(--font-mono);
     display: flex;
     padding: 0.2rem;
     border: 1px solid var(--color-border-subtle);
@@ -135,6 +136,7 @@
 }
 
 .mode-unavailable {
+    font-family: var(--font-mono);
     color: var(--color-muted);
     font-size: 0.8rem;
     padding: 0.45rem 0.85rem;

@@ -8,21 +8,6 @@ import ThemeGuessLogo from "../components/ThemeGuessLogo";
 
 export const projects: Project[] = [
     {
-        name: "Portfolio",
-        featuredTechnologies: [],
-        subdomain: "portfolio",
-        liveUrl: "https://ammarz.com",
-        repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/portfolio" }],
-        summary: "My personal developer portfolio.",
-        description: "A simple home for my projects. Something a little more interactive is coming Soon™.",
-        logo: PortfolioLogo,
-        images: [],
-        stack: [
-            { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite] },
-            { category: "deployment", technologies: [tech.cloudflare] },
-        ]
-    },
-    {
         name: "Tasked",
         featuredTechnologies: [tech.csharp, tech.aspnet, tech.sqlserver, tech.azure],
         subdomain: "tasked",
@@ -32,8 +17,10 @@ export const projects: Project[] = [
         ],
         liveUrl: "https://tasked.ammarz.com",
         summary: "Collaborative project and task management.",
-        description: `Tasked is a full-stack project management application for organizing tasks and collaborating with configurable project memberships and role-based permissions.
-        I built it to learn C# through a common backend stack: an ASP.NET Core API backed by SQL Server, with Entity Framework Core handling object-relational mapping and database migrations.
+        description: `Tasked is a full-stack project management application for organizing tasks and collaborating with others. 
+        Users can create or join projects, manage tasks, and keep track of assigned work.
+        Configurable visibility, join policies, bans, and member roles give project owners full control of their project and let Tasked support anything from a private to-do list to a shared team project.
+        \n\nI built Tasked to learn C# through a common backend stack: an ASP.NET Core API backed by SQL Server, with Entity Framework Core handling object-relational mapping and database migrations.
         The backend is responsible for authentication, session management using refresh tokens, authorization, and application logic for managing projects and tasks.
         The API is containerized with Docker and deployed to Azure App Service, with Azure SQL Database hosting application data.`,
         logo: Tasked,
@@ -86,14 +73,31 @@ export const projects: Project[] = [
         repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/word-wasp" }],
         liveUrl: "https://word-wasp.ammarz.com",
         summary: "A word puzzle game inspired by NYT Spelling Bee.",
-        description: `It seems like Wordle clones are some of the most popular first projects out there, so I decided to do something different and create a version of the less popular Spelling Bee game.
-                    The focus of this project was to recreate a UI with the iconic honeycomb grid and hexagonal letter tiles.
-                    Unlike the daily format of Spelling Bee, Word Wasp lets players freely start new puzzles and choose between easy and hard word lists.`,
+        description: `Word Wasp is a word puzzle inspired by Spelling Bee. Each Word Wasp puzzle provides 7 letters, with one designated center letter. 
+        Players find as many words as possible using those letters, with the constraints that words must be 4+ letters long and contain the center letter.
+        Wordle clones seem to be some of the most popular first projects, so I wanted to do something slightly different. 
+        The focus of this project was to properly recreate the game logic, scoring rules, and most importantly the UI's iconic honeycomb grid with hexagonal letter tiles.
+        Instead of a single daily puzzle, Word Wasp lets players puzzles whenever they want and choose between an easy or hard word list.`,
         logo: Wasp,
         logoBackground: "light",
         images: [{ src: "/projects/word-wasp/word-wasp.jpg", alt: "Word Wasp puzzle with letter tiles, guessed words, and score" }, { src: "/projects/word-wasp/word-wasp-light.jpg", alt: "Word Wasp puzzle with a white background" }],
         stack: [
             { category: "frontend", technologies: [tech.react, tech.typescript, tech.css] },
+        ]
+    },
+    {
+        name: "Portfolio",
+        featuredTechnologies: [],
+        subdomain: "portfolio",
+        liveUrl: "https://ammarz.com",
+        repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/portfolio" }],
+        summary: "My personal developer portfolio.",
+        description: "A simple home for my projects. Something a little more immersive is coming Soon™.",
+        logo: PortfolioLogo,
+        images: [],
+        stack: [
+            { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite] },
+            { category: "deployment", technologies: [tech.cloudflare] },
         ]
     },
     {

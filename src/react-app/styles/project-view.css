@@ -192,6 +192,11 @@
     color: #929eae;
 }
 
+.project-image-caption > span:last-child:not(:first-child) {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
 .project-thumbnails {
     display: flex;
     gap: 0.5rem;
@@ -254,8 +259,9 @@
 }
 
 .stack-group h4 {
+    font-family: var(--font-mono);
     font-size: 0.85rem;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .stack-technologies {
@@ -268,6 +274,7 @@
 }
 
 .stack-technologies li {
+    font-family: var(--font-mono);
     display: flex;
     align-items: center;
     gap: 0.4rem;

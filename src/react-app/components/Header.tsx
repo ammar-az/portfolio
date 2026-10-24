@@ -4,16 +4,18 @@ import PortfolioLogo from "./PortfolioLogo";
 import InfoIcon from "../assets/icons/info-circle.svg?react";
 import GitHubIcon from "../assets/icons/github.svg?react";
 import LinkedInIcon from "../assets/icons/linkedin.svg?react";
+import EmailIcon from "../assets/icons/email.svg?react";
 
 type HeaderProps = {
     simple?: boolean;
     onModeChange?: (simple: boolean) => void;
-    resumeUrl?: string;
+    resumeUrl: string;
+    email?: string;
     githubUrl?: string;
     linkedinUrl?: string;
 };
 
-export default function Header({ simple = true, onModeChange, resumeUrl, githubUrl, linkedinUrl }: HeaderProps) {
+export default function Header({ simple = true, onModeChange, resumeUrl, email, githubUrl, linkedinUrl }: HeaderProps) {
     const about = useModalDialog();
     const menu = useModalDialog();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -44,7 +46,8 @@ export default function Header({ simple = true, onModeChange, resumeUrl, githubU
     const navigation = <>
         <div className="header-personal-links">
             <button type="button" className="header-link" onClick={openAbout}><InfoIcon className="header-nav-icon" aria-hidden="true" />About</button>
-            {resumeUrl ? <a className="header-link" href={resumeUrl} target="_blank" rel="noopener noreferrer" onClick={closeMenu}>Resume ↗</a> : <span className="header-link header-link-unavailable" aria-disabled="true" title="Resume coming soon">Resume <span aria-hidden="true">↗</span><span className="mobile-link-label">Coming soon</span></span>}
+            <a className="header-link" href={resumeUrl} target="_blank" rel="noopener noreferrer" aria-label="Resume (PDF, opens in a new tab)" onClick={closeMenu}>Resume <span aria-hidden="true">↗</span></a>
+            {email && <a className="header-link header-social-link" href={`mailto:${email}`} aria-label="Email Ammar" title={email} onClick={closeMenu}><EmailIcon className="header-nav-icon" aria-hidden="true" /><span className="mobile-link-label">Email</span></a>}
             {githubUrl && <a className="header-link header-social-link" href={githubUrl} target="_blank" rel="noopener noreferrer" aria-label="GitHub (opens in a new tab)" title="GitHub" onClick={closeMenu}><GitHubIcon className="header-nav-icon header-github-icon" aria-hidden="true" /><span className="mobile-link-label">GitHub</span></a>}
             {linkedinUrl ? <a className="header-link header-social-link" href={linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)" title="LinkedIn" onClick={closeMenu}><LinkedInIcon className="header-nav-icon header-linkedin-icon" aria-hidden="true" /><span className="mobile-link-label">LinkedIn</span></a> : <span className="header-link header-social-link header-link-unavailable" aria-disabled="true" aria-label="LinkedIn (link coming soon)" title="LinkedIn — link coming soon"><LinkedInIcon className="header-nav-icon header-linkedin-icon" aria-hidden="true" /><span className="mobile-link-label">LinkedIn · Coming soon</span></span>}
         </div>
@@ -52,7 +55,7 @@ export default function Header({ simple = true, onModeChange, resumeUrl, githubU
             {onModeChange ? <div className="mode-selector" role="group" aria-label="Portfolio layout">
                 <button type="button" aria-pressed={simple} onClick={() => { closeMenu(); onModeChange(true); }}>Simple</button>
                 <button type="button" aria-pressed={!simple} onClick={() => { closeMenu(); onModeChange(false); }}>Space</button>
-            </div> : <span className="mode-unavailable">Space mode · Coming soon</span>}
+            </div> : <span className="mode-unavailable">Immersive View · Coming soon</span>}
         </div>
     </>;
 
