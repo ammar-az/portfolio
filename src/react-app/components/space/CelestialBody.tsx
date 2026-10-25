@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Project } from "../../types/project";
 import type { Point } from "../../utils/spaceGeometry";
-import { spaceScene } from "../../data/spaceScene";
 import type { PlanetTextureOptions } from "../../utils/planetTextures";
 import PlanetSurface from "./PlanetSurface";
 import StarSurface from "./StarSurface";
@@ -21,6 +20,7 @@ type BodyIdentity = {
 
 type CelestialBodyProps = BodyIdentity & {
     position: Point;
+    sceneSize: { width: number; height: number };
     diameter: number;
     height?: number;
     color: string;
@@ -32,14 +32,14 @@ type CelestialBodyProps = BodyIdentity & {
     lightRotation?: number;
 };
 
-export default function CelestialBody({ project, name, position, diameter, height = diameter, color, star = false, starPalette, starFinish = "textured", starSeed = 1871, surface, lightRotation = 0, selected = false, onSelect }: CelestialBodyProps) {
+export default function CelestialBody({ project, name, position, sceneSize, diameter, height = diameter, color, star = false, starPalette, starFinish = "textured", starSeed = 1871, surface, lightRotation = 0, selected = false, onSelect }: CelestialBodyProps) {
     const Logo = project?.logo;
     const label = project ? project.name : name;
     const style = {
-        left: star ? "var(--star-offset-x)" : `${position.x / spaceScene.width * 100}%`,
-        top: `${position.y / spaceScene.height * 100}%`,
-        "--body-diameter": star ? `${diameter}px` : `${diameter / spaceScene.width * 100}vw`,
-        "--body-height": star ? `${height}px` : `${height / spaceScene.width * 100}vw`,
+        left: `${position.x / sceneSize.width * 100}%`,
+        top: `${position.y / sceneSize.height * 100}%`,
+        "--body-diameter": `${diameter}px`,
+        "--body-height": `${height}px`,
         "--body-color": color,
         "--light-rotation": `${lightRotation}deg`,
         "--star-highlight": starPalette?.highlight,

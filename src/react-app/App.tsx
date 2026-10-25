@@ -25,7 +25,6 @@ function App() {
 					<Simple onSpaceMode={() => changeMode(false)}/>
 				) :  (
 					<Space textureRevision={textureRevision} onReroll={() => setTextureRevision(revision => revision + 1)}
-						onSimpleMode={() => changeMode(true)}
 						starfieldRevision={starfieldRevision} onStarfieldReroll={() => setStarfieldRevision(revision => revision + 1)}
 						starAppearance={starAppearance} onStarAppearanceChange={setStarAppearance}/>
 				)}
