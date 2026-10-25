@@ -1,6 +1,6 @@
 // src/App.tsx
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Header from "./components/Header";
 
@@ -15,6 +15,8 @@ function App() {
 	const [textureRevision, setTextureRevision] = useState(0);
 	const [starfieldRevision, setStarfieldRevision] = useState(0);
 	const [starAppearance, setStarAppearance] = useState<StarAppearance>({ color: "yellow", finish: "textured", seed: 1871 });
+	const [rotationEnabled, setRotationEnabled] = useState(true);
+	const rotationClock = useRef(0);
 	
 	return (
 		<>
@@ -25,6 +27,7 @@ function App() {
 					<Simple onSpaceMode={() => changeMode(false)}/>
 				) :  (
 					<Space textureRevision={textureRevision} onReroll={() => setTextureRevision(revision => revision + 1)}
+						rotationEnabled={rotationEnabled} onRotationChange={setRotationEnabled} rotationClock={rotationClock}
 						starfieldRevision={starfieldRevision} onStarfieldReroll={() => setStarfieldRevision(revision => revision + 1)}
 						starAppearance={starAppearance} onStarAppearanceChange={setStarAppearance}/>
 				)}

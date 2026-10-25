@@ -8,6 +8,12 @@ export const spaceScene = {
     star: { heightRatio: 1100 / 1250, aspectRatio: 820 / 1100, offsetRatio: -160 / 1100 },
     orbitTilt: 8,
     orbitFlattening: 0.42,
+    // Artistic falloff: outer worlds have deeper shade, while their lit faces stay bright.
+    lighting: {
+        inner: { fill: 0.55, depth: 1.7, terminatorStart: -0.6 },
+        outer: { fill: 0.25, depth: 0.85, terminatorStart: -0.4 },
+        falloff: 0.8,
+    },
 };
 
 type PlanetAppearance = PlanetTextureOptions & {

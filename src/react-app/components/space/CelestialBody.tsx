@@ -30,9 +30,10 @@ type CelestialBodyProps = BodyIdentity & {
     starSeed?: number;
     surface?: PlanetTextureOptions;
     lightRotation?: number;
+    orbitRadius?: number;
 };
 
-export default function CelestialBody({ project, name, position, sceneSize, diameter, height = diameter, color, star = false, starPalette, starFinish = "textured", starSeed = 1871, surface, lightRotation = 0, selected = false, onSelect }: CelestialBodyProps) {
+export default function CelestialBody({ project, name, position, sceneSize, diameter, height = diameter, color, star = false, starPalette, starFinish = "textured", starSeed = 1871, surface, lightRotation = 0, orbitRadius, selected = false, onSelect }: CelestialBodyProps) {
     const Logo = project?.logo;
     const label = project ? project.name : name;
     const style = {
@@ -54,7 +55,7 @@ export default function CelestialBody({ project, name, position, sceneSize, diam
             {Logo && <Logo focusable="false" />}
         </span>
         <span className={`space-body-sphere${surface ? ` space-body-sphere-${surface.type}` : ""}`} aria-hidden="true">
-            {star && starPalette ? <StarSurface palette={starPalette} finish={starFinish} seed={starSeed} /> : surface && <PlanetSurface {...surface} lightRotation={lightRotation} />}
+            {star && starPalette ? <StarSurface palette={starPalette} finish={starFinish} seed={starSeed} /> : surface && <PlanetSurface {...surface} lightRotation={lightRotation} orbitRadius={orbitRadius} />}
         </span>
         <span className="space-body-label">{label}</span>
     </>;

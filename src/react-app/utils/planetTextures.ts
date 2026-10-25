@@ -1,3 +1,5 @@
+import { seededRandom } from "./seededRandom";
+
 export type PlanetTextureOptions = {
     color: string;
     accentColor?: string;
@@ -21,17 +23,6 @@ function parseColor(color: string): RGB {
 
 function mix(a: RGB, b: RGB, amount: number): string {
     return `#${a.map((channel, index) => Math.round(channel + (b[index] - channel) * amount).toString(16).padStart(2, "0")).join("")}`;
-}
-
-function seededRandom(seed: string | number): Random {
-    let state = 2166136261;
-    for (const char of String(seed)) state = Math.imul(state ^ char.charCodeAt(0), 16777619);
-    return () => {
-        state = (state + 0x6d2b79f5) | 0;
-        let value = Math.imul(state ^ state >>> 15, 1 | state);
-        value ^= value + Math.imul(value ^ value >>> 7, 61 | value);
-        return ((value ^ value >>> 14) >>> 0) / 4294967296;
-    };
 }
 
 const n = (value: number) => value.toFixed(2);
@@ -107,8 +98,8 @@ function rockFilters(seed: number, azimuth: number): string {
     </filter>`;
 }
 
-function giantSurface(primary: RGB, accent: RGB, intense: boolean, random: Random): string {
-    const bands: string[] = [];
+export function giantArtwork(primary: RGB, accent: RGB, intense: boolean, random: Random) {
+    const bands: { y: number; thickness: number; curve: number; wave: number; color: string; opacity: number; rim?: { color: string; width: number } }[] = [];
     let y = -40;
     while (y < 300) {
         const thickness = intense ? 3 + random() * 12 : 10 + random() * 25;
@@ -118,11 +109,11 @@ function giantSurface(primary: RGB, accent: RGB, intense: boolean, random: Rando
         const color = palette < 0.3
             ? mix(primary, [6, 15, 32], intense ? 0.68 : 0.16)
             : mix(primary, accent, 0.25 + random() * 0.75);
-        const path = `M-40 ${n(y)}Q64 ${n(y + curve + wave)} 128 ${n(y + curve)}T296 ${n(y)}L296 ${n(y + thickness)}Q192 ${n(y + curve + thickness)} 128 ${n(y + curve + thickness)}T-40 ${n(y + thickness)}Z`;
-        bands.push(`<path d="${path}" fill="${color}" opacity="${n(intense ? 0.5 + random() * 0.4 : 0.15 + random() * 0.22)}"/>`);
+        const band: (typeof bands)[number] = { y, thickness, curve, wave, color, opacity: intense ? 0.5 + random() * 0.4 : 0.15 + random() * 0.22 };
         if (intense && random() > 0.4) {
-            bands.push(`<path d="M-40 ${n(y + thickness)}Q96 ${n(y + curve + thickness + wave)} 160 ${n(y + curve + thickness)}T296 ${n(y + thickness)}" fill="none" stroke="${mix(accent, [255, 255, 255], 0.18)}" stroke-width="${n(0.5 + random())}" opacity=".55"/>`);
+            band.rim = { color: mix(accent, [255, 255, 255], 0.18), width: 0.5 + random() };
         }
+        bands.push(band);
         y += thickness;
     }
 
@@ -133,13 +124,26 @@ function giantSurface(primary: RGB, accent: RGB, intense: boolean, random: Rando
         const rings = Array.from({ length: 5 }, (_, index) => {
             const scale = 1 - index * 0.17;
             const color = index % 2 ? mix(primary, [7, 17, 34], 0.6) : mix(primary, accent, 0.55);
-            return `<ellipse rx="${n(radius * scale)}" ry="${n(radius * scale * 0.36)}" fill="${color}" opacity=".65"/>`;
-        }).join("");
-        return `<g transform="translate(${n(x)} ${n(y)}) rotate(${n((random() - 0.5) * 24)})">${rings}</g>`;
-    }).join("") : "";
+            return { radius: radius * scale, color };
+        });
+        return { x, y, rings, rotation: (random() - 0.5) * 24 };
+    }) : [];
 
     const rotation = (random() - 0.5) * 18;
-    return `<g transform="rotate(${n(rotation)} 128 128)" filter="url(#flow)">${bands.join("")}${storms}</g>`;
+    return { bands, storms, rotation };
+}
+
+function giantSurface(primary: RGB, accent: RGB, intense: boolean, random: Random): string {
+    const artwork = giantArtwork(primary, accent, intense, random);
+    const bands = artwork.bands.map(({ y, thickness, curve, wave, color, opacity, rim }) => {
+        const path = `M-40 ${n(y)}Q64 ${n(y + curve + wave)} 128 ${n(y + curve)}T296 ${n(y)}L296 ${n(y + thickness)}Q192 ${n(y + curve + thickness)} 128 ${n(y + curve + thickness)}T-40 ${n(y + thickness)}Z`;
+        return `<path d="${path}" fill="${color}" opacity="${n(opacity)}"/>` + (rim
+            ? `<path d="M-40 ${n(y + thickness)}Q96 ${n(y + curve + thickness + wave)} 160 ${n(y + curve + thickness)}T296 ${n(y + thickness)}" fill="none" stroke="${rim.color}" stroke-width="${n(rim.width)}" opacity=".55"/>` : "");
+    }).join("");
+    const storms = artwork.storms.map(({ x, y, rotation, rings }) =>
+        `<g transform="translate(${n(x)} ${n(y)}) rotate(${n(rotation)})">${rings.map(({ radius, color }) =>
+            `<ellipse rx="${n(radius)}" ry="${n(radius * 0.36)}" fill="${color}" opacity=".65"/>`).join("")}</g>`).join("");
+    return `<g transform="rotate(${n(artwork.rotation)} 128 128)" filter="url(#flow)">${bands}${storms}</g>`;
 }
 
 /** Cached SVG source. PlanetSurface owns its image URL and applies lighting separately. */
