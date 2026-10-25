@@ -52,6 +52,18 @@
     pointer-events: none;
 }
 
+.space-planet-projection {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.planet-disc[data-projected] {
+    opacity: 0;
+}
+
 .space-viewport {
     position: absolute;
     inset: 0;
@@ -69,17 +81,40 @@
     position: absolute;
     top: calc(var(--space-header-bottom, 4.75rem) + 1rem);
     right: 4.8vw;
+    left: 4.8vw;
     z-index: 1;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+    pointer-events: none;
+}
+
+.space-controls > :not(.space-status) {
+    pointer-events: auto;
 }
 
 .space-reroll,
 .space-palette-button,
-.space-starfield-reroll {
+.space-starfield-reroll,
+.space-rotation {
     background: linear-gradient(180deg, #1014198c, #10141966);
+}
+
+.space-rotation svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.space-rotation[aria-pressed="true"] {
+    color: #9cdaef;
+}
+
+.space-rotation:disabled {
+    opacity: 0.5;
+    cursor: default;
 }
 
 .space-controls .icon-button:hover {
@@ -88,12 +123,13 @@
 
 .space-palette-picker {
     position: relative;
+    margin-right: auto;
 }
 
 .space-palette-panel {
     position: absolute;
-    top: 0;
-    right: calc(100% + 0.75rem);
+    top: calc(100% + 0.75rem);
+    left: 0;
     width: min(16rem, calc(100vw - 5rem));
     padding: 0.9rem;
     background: linear-gradient(180deg, #1118208c, #11182066);
@@ -307,6 +343,7 @@
 
 .planet-lighting {
     border-radius: 0;
+    opacity: var(--planet-shadow-opacity, 0.54);
     background:
         radial-gradient(circle at 22% 50%, #ffffff28, #ffffff00 48%),
         radial-gradient(ellipse at 15% 50%, #0000 20%, #00000010 40%, #0006 67%, #000d 90%, #000f);
@@ -474,17 +511,20 @@
         left: max(1rem, env(safe-area-inset-left));
         right: max(1rem, env(safe-area-inset-right));
         flex-direction: row;
-        justify-content: flex-end;
+        justify-content: center;
+        gap: clamp(0.75rem, 4vw, 1.5rem);
         align-items: flex-start;
     }
 
     .space-scene-mobile .space-palette-picker {
         position: static;
+        margin-right: 0;
     }
 
     .space-scene-mobile .space-palette-panel {
         top: calc(100% + 0.75rem);
-        right: 0;
+        left: 50%;
+        transform: translateX(-50%);
         width: min(16rem, 100%);
         max-height: calc(100dvh - var(--space-header-bottom, 4rem) - 6rem - env(safe-area-inset-bottom));
         overflow-y: auto;

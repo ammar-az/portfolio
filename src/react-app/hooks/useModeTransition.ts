@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 type Phase = "idle" | "covering" | "revealing";
-type Request = { simple: boolean; focus: HTMLElement | null };
+type Request = { simple: boolean; focus: HTMLElement | null; anchor: boolean };
 
 export default function useModeTransition() {
-    const [simple, setSimple] = useState(true);
+    const [simple, setSimple] = useState(() => window.location.hash !== "#space");
     const [phase, setPhase] = useState<Phase>("idle");
     const overlayRef = useRef<HTMLDivElement>(null);
     const requestRef = useRef<Request | null>(null);
     const cancelRef = useRef<(() => void) | null>(null);
     const simpleScroll = useRef({ left: 0, top: 0 });
+    const simpleHash = useRef(window.location.hash === "#space" ? "" : window.location.hash);
 
-    const changeMode = useCallback((nextSimple: boolean) => {
+    const changeMode = useCallback((nextSimple: boolean, updateHistory = true) => {
         if (requestRef.current || nextSimple === simple) return;
+        if (simple && window.location.hash !== "#space") simpleHash.current = window.location.hash;
+        if (updateHistory) {
+            const hash = nextSimple ? simpleHash.current : "#space";
+            window.history.pushState(window.history.state, "", window.location.pathname + window.location.search + hash);
+        }
         const focus = document.activeElement;
-        requestRef.current = { simple: nextSimple, focus: focus instanceof HTMLElement ? focus : null };
+        requestRef.current = { simple: nextSimple, focus: focus instanceof HTMLElement ? focus : null, anchor: !updateHistory && nextSimple };
         if (simple) simpleScroll.current = { left: window.scrollX, top: window.scrollY };
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
             setSimple(nextSimple);
@@ -23,11 +29,31 @@ export default function useModeTransition() {
         }
     }, [simple]);
 
+    useEffect(() => {
+        const syncMode = () => {
+            if (simple && window.location.hash !== "#space") simpleHash.current = window.location.hash;
+            if (phase === "idle") changeMode(window.location.hash !== "#space", false);
+        };
+        window.addEventListener("popstate", syncMode);
+        window.addEventListener("hashchange", syncMode);
+        // Also reconcile navigation that happened while the fade was running.
+        syncMode();
+        return () => {
+            window.removeEventListener("popstate", syncMode);
+            window.removeEventListener("hashchange", syncMode);
+        };
+    }, [changeMode, phase]);
+
     useLayoutEffect(() => {
         const request = requestRef.current;
         if (!request || phase === "covering") return;
         // Restore scrolling behind the black overlay, before the new layout is revealed.
         window.scrollTo({ ...(simple ? simpleScroll.current : { left: 0, top: 0 }), behavior: "instant" });
+        if (simple && request.anchor && window.location.hash) {
+            let id = window.location.hash.slice(1);
+            try { id = decodeURIComponent(id); } catch { /* Keep malformed fragments literal. */ }
+            document.getElementById(id)?.scrollIntoView({ behavior: "instant" });
+        }
         if (phase !== "idle") return;
         requestRef.current = null;
         const candidates = [request.focus,
