@@ -3,6 +3,7 @@ import type { Project } from "../types/project";
 import { stackLabels } from "../types/project";
 import "../styles/project-view.css";
 import useModalDialog from "../hooks/useModalDialog";
+import CloseIcon from "../assets/icons/close.svg?react";
 
 type ProjectViewProps = { project: Project; onClose: () => void };
 
@@ -56,7 +57,7 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
                     <h2 id={titleId}>{liveUrl ? <a href={liveUrl} target="_blank" rel="noopener noreferrer">{project.name} <span className="external-mark" aria-label="opens in a new tab">↗</span></a> : project.name}</h2>
                     <p>{project.summary}</p>
                 </div>
-                <button type="button" className="icon-button project-close" aria-label="Close project details" onClick={onClose} autoFocus>×</button>
+                <button type="button" className="icon-button project-close" aria-label="Close project details" onClick={onClose} autoFocus><CloseIcon aria-hidden="true" focusable="false" /></button>
             </header>
             <div ref={contentRef} className="project-content" tabIndex={-1}>
                 <div className="project-sections">
