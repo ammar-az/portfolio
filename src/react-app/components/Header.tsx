@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import useModalDialog from "../hooks/useModalDialog";
 import PortfolioLogo from "./PortfolioLogo";
 import InfoIcon from "../assets/icons/info-circle.svg?react";
 import GitHubIcon from "../assets/icons/github.svg?react";
 import LinkedInIcon from "../assets/icons/linkedin.svg?react";
 import EmailIcon from "../assets/icons/email.svg?react";
+import CloseIcon from "../assets/icons/close.svg?react";
+import planetIconUrl from "../assets/icons/planet.svg?url&no-inline";
 
 type HeaderProps = {
     simple?: boolean;
@@ -52,9 +55,9 @@ export default function Header({ simple = true, onModeChange, resumeUrl, email, 
             {linkedinUrl ? <a className="header-link header-social-link" href={linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)" title="LinkedIn" onClick={closeMenu}><LinkedInIcon className="header-nav-icon header-linkedin-icon" aria-hidden="true" /><span className="mobile-link-label">LinkedIn</span></a> : <span className="header-link header-social-link header-link-unavailable" aria-disabled="true" aria-label="LinkedIn (link coming soon)" title="LinkedIn — link coming soon"><LinkedInIcon className="header-nav-icon header-linkedin-icon" aria-hidden="true" /><span className="mobile-link-label">LinkedIn · Coming soon</span></span>}
         </div>
         <div className="header-mode-control">
-            {onModeChange ? <div className="mode-selector" role="group" aria-label="Portfolio layout">
+            {onModeChange ? <div className={`mode-selector${simple ? "" : " mode-selector-space"}`} role="group" aria-label="Portfolio layout">
                 <button type="button" aria-pressed={simple} onClick={() => { closeMenu(); onModeChange(true); }}>Simple</button>
-                <button type="button" aria-pressed={!simple} onClick={() => { closeMenu(); onModeChange(false); }}>Space</button>
+                <button type="button" aria-pressed={!simple} onClick={() => { closeMenu(); onModeChange(false); }}>Space<span className="mode-icon" style={{ "--mode-icon-source": `url("${planetIconUrl}")` } as CSSProperties} aria-hidden="true" /></button>
             </div> : <span className="mode-unavailable">Immersive View · Coming soon</span>}
         </div>
     </>;
@@ -76,14 +79,14 @@ export default function Header({ simple = true, onModeChange, resumeUrl, email, 
             <dialog ref={menu.dialogRef} id="mobile-menu" className="mobile-menu" aria-labelledby="mobile-menu-title" onCancel={event => { event.preventDefault(); closeMenu(); }} onClose={() => { if (!menu.dialogRef.current?.open) { menu.restore(); setMenuOpen(false); } }}>
                 <div className="mobile-menu-heading">
                     <h2 id="mobile-menu-title">Menu</h2>
-                    <button type="button" className="icon-button" aria-label="Close navigation menu" onClick={closeMenu} autoFocus>×</button>
+                    <button type="button" className="icon-button" aria-label="Close navigation menu" onClick={closeMenu} autoFocus><CloseIcon aria-hidden="true" focusable="false" /></button>
                 </div>
                 <nav aria-label="Mobile navigation">{navigation}</nav>
             </dialog>
             <dialog ref={about.dialogRef} className="about-dialog" aria-labelledby="about-title" onCancel={event => { event.preventDefault(); about.close(); }} onClose={about.restore}>
                 <div className="about-heading">
                     <h2 id="about-title">About Ammar Zaghloul</h2>
-                    <button type="button" className="icon-button" aria-label="Close about" onClick={about.close} autoFocus>×</button>
+                    <button type="button" className="icon-button" aria-label="Close about" onClick={about.close} autoFocus><CloseIcon aria-hidden="true" focusable="false" /></button>
                 </div>
                 <div className="about-content" role="region" tabIndex={0} aria-label="About Ammar Zaghloul">
                     <p>

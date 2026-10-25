@@ -1,5 +1,5 @@
 import type { SVGProps } from "react";
-import shadedLogoUrl from "../assets/logos/az-shaded.svg?url";
+import shadedLogoUrl from "../assets/logos/az-shaded.svg?url&no-inline";
 
 export default function PortfolioLogo(props: SVGProps<SVGSVGElement>) {
     return (
