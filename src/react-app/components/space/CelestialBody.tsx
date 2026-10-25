@@ -4,7 +4,7 @@ import type { Point } from "../../utils/spaceGeometry";
 import type { PlanetTextureOptions } from "../../utils/planetTextures";
 import PlanetSurface from "./PlanetSurface";
 import StarSurface from "./StarSurface";
-import type { StarFinish, StarPalette } from "../../data/starAppearance";
+import type { StarPalette } from "../../data/starAppearance";
 
 type BodyIdentity = {
     project: Project;
@@ -26,14 +26,13 @@ type CelestialBodyProps = BodyIdentity & {
     color: string;
     star?: boolean;
     starPalette?: StarPalette;
-    starFinish?: StarFinish;
     starSeed?: number;
     surface?: PlanetTextureOptions;
     lightRotation?: number;
     orbitRadius?: number;
 };
 
-export default function CelestialBody({ project, name, position, sceneSize, diameter, height = diameter, color, star = false, starPalette, starFinish = "textured", starSeed = 1871, surface, lightRotation = 0, orbitRadius, selected = false, onSelect }: CelestialBodyProps) {
+export default function CelestialBody({ project, name, position, sceneSize, diameter, height = diameter, color, star = false, starPalette, starSeed = 1871, surface, lightRotation = 0, orbitRadius, selected = false, onSelect }: CelestialBodyProps) {
     const Logo = project?.logo;
     const label = project ? project.name : name;
     const style = {
@@ -55,7 +54,7 @@ export default function CelestialBody({ project, name, position, sceneSize, diam
             {Logo && <Logo focusable="false" />}
         </span>
         <span className={`space-body-sphere${surface ? ` space-body-sphere-${surface.type}` : ""}`} aria-hidden="true">
-            {star && starPalette ? <StarSurface palette={starPalette} finish={starFinish} seed={starSeed} /> : surface && <PlanetSurface {...surface} lightRotation={lightRotation} orbitRadius={orbitRadius} />}
+            {star && starPalette ? <StarSurface palette={starPalette} seed={starSeed} /> : surface && <PlanetSurface {...surface} lightRotation={lightRotation} orbitRadius={orbitRadius} />}
         </span>
         <span className="space-body-label">{label}</span>
     </>;

@@ -13,7 +13,7 @@
     right: 0;
     width: 100%;
     margin: 0;
-    padding: 0.65rem calc(4.8vw + 1.75rem);
+    padding: 0.65rem calc(4.8vw - 1rem);
     border: 0;
     border-bottom: 1px solid transparent;
     border-radius: 0;
@@ -60,7 +60,8 @@
     pointer-events: none;
 }
 
-.planet-disc[data-projected] {
+.planet-disc[data-projected],
+.star-disc[data-projected] {
     opacity: 0;
 }
 
@@ -94,31 +95,28 @@
 }
 
 .space-reroll,
+.space-performance,
 .space-palette-button,
-.space-starfield-reroll,
-.space-rotation {
+.space-starfield-reroll {
     background: linear-gradient(180deg, #1014198c, #10141966);
-}
-
-.space-rotation svg {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.space-rotation[aria-pressed="true"] {
-    color: #9cdaef;
-}
-
-.space-rotation:disabled {
-    opacity: 0.5;
-    cursor: default;
 }
 
 .space-controls .icon-button:hover {
     background: linear-gradient(180deg, #10141999, #10141980);
+}
+
+.space-performance[aria-pressed="true"] {
+    color: #9cdaef;
+    border-color: #589bb777;
+}
+
+.space-performance:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.space-mobile-motion {
+    display: none;
 }
 
 .space-palette-picker {
@@ -176,15 +174,6 @@
     box-shadow: inset 0 0 0 1px #ffffff40;
 }
 
-.space-star-finishes {
-    display: flex;
-    gap: 0.4rem;
-    margin-top: 0.75rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border-subtle);
-}
-
-.space-star-finishes button,
 .space-sun-reroll {
     flex: 1;
     min-height: 2.5rem;
@@ -213,13 +202,11 @@
 }
 
 .space-color-option:hover,
-.space-star-finishes button:hover,
 .space-sun-reroll:hover {
     background: #ffffff0a;
 }
 
-.space-color-option[aria-pressed="true"],
-.space-star-finishes button[aria-pressed="true"] {
+.space-color-option[aria-pressed="true"] {
     background: #ffffff10;
     border-color: #b5c9e2;
 }
@@ -474,10 +461,6 @@
     background: radial-gradient(ellipse at 44% 48%, color-mix(in srgb, var(--star-highlight) 18%, transparent), transparent 65%);
 }
 
-.star-disc-smooth .star-luminosity {
-    background: radial-gradient(ellipse at 44% 48%, color-mix(in srgb, var(--star-highlight) 12%, transparent), transparent 65%);
-}
-
 /* Keep the star's identity beside its visible limb, clear of the clipped center. */
 .space-body-star .space-body-logo {
     position: absolute;
@@ -512,13 +495,17 @@
         right: max(1rem, env(safe-area-inset-right));
         flex-direction: row;
         justify-content: center;
-        gap: clamp(0.75rem, 4vw, 1.5rem);
+        gap: clamp(0.5rem, 2.4vw, 1.25rem);
         align-items: flex-start;
     }
 
     .space-scene-mobile .space-palette-picker {
         position: static;
         margin-right: 0;
+    }
+
+    .space-scene-mobile .space-mobile-motion {
+        display: inline-flex;
     }
 
     .space-scene-mobile .space-palette-panel {
@@ -531,7 +518,7 @@
         overscroll-behavior: contain;
     }
 
-    .space-scene-mobile :is(.space-star-finishes button, .space-sun-reroll) {
+    .space-scene-mobile .space-sun-reroll {
         min-height: 2.75rem;
     }
 

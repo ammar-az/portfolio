@@ -8,17 +8,20 @@ import LinkedInIcon from "../assets/icons/linkedin.svg?react";
 import EmailIcon from "../assets/icons/email.svg?react";
 import CloseIcon from "../assets/icons/close.svg?react";
 import planetIconUrl from "../assets/icons/planet.svg?url&no-inline";
+import SceneMotionControl from "./space/SceneMotionControl";
 
 type HeaderProps = {
     simple?: boolean;
     onModeChange?: (simple: boolean) => void;
+    motionEnabled?: boolean;
+    onMotionChange?: (enabled: boolean) => void;
     resumeUrl: string;
     email?: string;
     githubUrl?: string;
     linkedinUrl?: string;
 };
 
-export default function Header({ simple = true, onModeChange, resumeUrl, email, githubUrl, linkedinUrl }: HeaderProps) {
+export default function Header({ simple = true, onModeChange, motionEnabled = true, onMotionChange, resumeUrl, email, githubUrl, linkedinUrl }: HeaderProps) {
     const about = useModalDialog();
     const menu = useModalDialog();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -59,6 +62,7 @@ export default function Header({ simple = true, onModeChange, resumeUrl, email, 
                 <button type="button" aria-pressed={simple} onClick={() => { closeMenu(); onModeChange(true); }}>Simple</button>
                 <button type="button" aria-pressed={!simple} onClick={() => { closeMenu(); onModeChange(false); }}>Space<span className="mode-icon" style={{ "--mode-icon-source": `url("${planetIconUrl}")` } as CSSProperties} aria-hidden="true" /></button>
             </div> : <span className="mode-unavailable">Immersive View · Coming soon</span>}
+            {!simple && onMotionChange && <span className="header-motion"><SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} /></span>}
         </div>
     </>;
 
