@@ -129,6 +129,40 @@
     padding-left: 1.65rem;
 }
 
+.portfolio-app-space .header-mode-control {
+    gap: 0.5rem;
+}
+
+.header-nav .scene-motion {
+    width: 2.25rem;
+    height: 2.25rem;
+}
+
+.header-motion {
+    display: inline-flex;
+}
+
+.mobile-menu .header-motion {
+    display: none;
+}
+
+.scene-motion svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.scene-motion[aria-pressed="true"] {
+    color: #9cdaef;
+}
+
+.scene-motion:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .header-link:hover {
     color: var(--color-text);
 }

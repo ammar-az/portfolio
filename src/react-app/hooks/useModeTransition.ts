@@ -5,15 +5,23 @@ type Request = { simple: boolean; focus: HTMLElement | null; anchor: boolean };
 
 export default function useModeTransition() {
     const [simple, setSimple] = useState(() => window.location.hash !== "#space");
-    const [phase, setPhase] = useState<Phase>("idle");
+    const [phase, setPhase] = useState<Phase>(() => window.location.hash === "#space" ? "revealing" : "idle");
+    const [reduced, setReduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
     const overlayRef = useRef<HTMLDivElement>(null);
     const requestRef = useRef<Request | null>(null);
-    const cancelRef = useRef<(() => void) | null>(null);
+    const spaceReady = useRef(false);
+    const readyResolver = useRef<(() => void) | null>(null);
     const simpleScroll = useRef({ left: 0, top: 0 });
     const simpleHash = useRef(window.location.hash === "#space" ? "" : window.location.hash);
+    const onSpaceReady = useCallback(() => {
+        spaceReady.current = true;
+        readyResolver.current?.();
+        readyResolver.current = null;
+    }, []);
 
     const changeMode = useCallback((nextSimple: boolean, updateHistory = true) => {
         if (requestRef.current || nextSimple === simple) return;
+        if (!nextSimple) spaceReady.current = false;
         if (simple && window.location.hash !== "#space") simpleHash.current = window.location.hash;
         if (updateHistory) {
             const hash = nextSimple ? simpleHash.current : "#space";
@@ -24,6 +32,7 @@ export default function useModeTransition() {
         if (simple) simpleScroll.current = { left: window.scrollX, top: window.scrollY };
         if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
             setSimple(nextSimple);
+            setPhase(nextSimple ? "idle" : "revealing");
         } else {
             setPhase("covering");
         }
@@ -65,11 +74,11 @@ export default function useModeTransition() {
     useEffect(() => {
         const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
         const onChange = () => {
+            setReduced(preference.matches);
             const request = requestRef.current;
             if (!preference.matches || !request) return;
-            cancelRef.current?.();
             setSimple(request.simple);
-            setPhase("idle");
+            setPhase(request.simple ? "idle" : "revealing");
         };
         preference.addEventListener("change", onChange);
         return () => preference.removeEventListener("change", onChange);
@@ -88,8 +97,9 @@ export default function useModeTransition() {
             cancelled = true;
             cancelAnimationFrame(frame);
             animation?.cancel();
+            readyResolver.current?.();
+            readyResolver.current = null;
         };
-        cancelRef.current = cancel;
 
         if (phase === "covering") {
             animation = overlay.animate([{ opacity: 0 }, { opacity: 1 }], {
@@ -109,8 +119,13 @@ export default function useModeTransition() {
                 const images = document.querySelectorAll<HTMLImageElement>(".space-scene .star-texture, .space-scene .planet-texture");
                 await Promise.allSettled(Array.from(images, image => image.decode()));
                 if (cancelled) return;
+                if (!simple && !spaceReady.current) {
+                    await new Promise<void>(resolve => { readyResolver.current = resolve; });
+                }
+                if (cancelled) return;
                 await nextFrame();
                 if (cancelled) return;
+                if (reduced) { setPhase("idle"); return; }
                 animation = overlay.animate([{ opacity: 1 }, { opacity: 0 }], {
                     duration: 220, easing: "ease-out", fill: "forwards",
                 });
@@ -119,22 +134,19 @@ export default function useModeTransition() {
             })();
         }
 
-        return () => {
-            cancel();
-            if (cancelRef.current === cancel) cancelRef.current = null;
-        };
-    }, [phase]);
+        return cancel;
+    }, [phase, simple, reduced]);
 
     useEffect(() => {
         if (phase === "idle") return;
         const onKeyDown = (event: KeyboardEvent) => {
-            if (!requestRef.current || event.altKey || event.ctrlKey || event.metaKey) return;
+            if (event.altKey || event.ctrlKey || event.metaKey) return;
             if (!["Tab", "Enter", " ", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"].includes(event.key)) return;
             event.preventDefault();
             event.stopPropagation();
         };
         const onWheel = (event: WheelEvent) => {
-            if (requestRef.current && !event.ctrlKey) event.preventDefault();
+            if (!event.ctrlKey) event.preventDefault();
         };
         document.addEventListener("keydown", onKeyDown, true);
         document.addEventListener("wheel", onWheel, { passive: false });
@@ -144,5 +156,5 @@ export default function useModeTransition() {
         };
     }, [phase]);
 
-    return { simple, changeMode, phase, overlayRef };
+    return { simple, changeMode, phase, overlayRef, onSpaceReady };
 }

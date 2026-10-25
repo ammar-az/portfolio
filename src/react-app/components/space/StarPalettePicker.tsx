@@ -54,10 +54,6 @@ export default function StarPalettePicker({ value, onChange }: StarPalettePicker
                         <span>{palette.name}</span>
                     </button>)}
                 </div>
-                <div className="space-star-finishes" role="group" aria-label="Solar surface">
-                    <button type="button" aria-pressed={value.finish === "textured"} onClick={() => onChange({ ...value, finish: "textured" })}>Textured</button>
-                    <button type="button" aria-pressed={value.finish === "smooth"} onClick={() => onChange({ ...value, finish: "smooth" })}>Smooth</button>
-                </div>
                 <button type="button" className="space-sun-reroll" onClick={() => onChange({ ...value, seed: seed + 1 })}>
                     <RefreshIcon aria-hidden="true" focusable="false" />Reroll sun
                 </button>

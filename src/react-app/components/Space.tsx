@@ -11,21 +11,25 @@ import RefreshIcon from "../assets/icons/refresh.svg?react";
 import StarsIcon from "../assets/icons/stars.svg?react";
 import StarPalettePicker from "./space/StarPalettePicker";
 import Starfield from "./space/Starfield";
-import { PlanetProjectionProvider, PlanetProjectionCanvas, PlanetRotationControl } from "./space/PlanetProjection";
+import { PlanetProjectionCanvas } from "./space/PlanetProjection";
+import SceneMotionControl from "./space/SceneMotionControl";
+import SolarPerformanceControl from "./space/SolarPerformanceControl";
 import { starPalettes } from "../data/starAppearance";
 import type { StarAppearance } from "../data/starAppearance";
 import "../styles/space-mode.css";
 
 type SpaceProps = {
+    motionEnabled: boolean;
+    onMotionChange: (enabled: boolean) => void;
+    convectionEnabled: boolean;
+    onConvectionChange: (enabled: boolean) => void;
+    onReady: () => void;
     textureRevision: number;
     onReroll: () => void;
     starfieldRevision: number;
     onStarfieldReroll: () => void;
     starAppearance: StarAppearance;
     onStarAppearanceChange: (value: StarAppearance) => void;
-    rotationEnabled: boolean;
-    onRotationChange: (enabled: boolean) => void;
-    rotationClock: { current: number };
 };
 
 function revealBody(viewport: HTMLElement | null, body: HTMLElement) {
@@ -43,7 +47,8 @@ function revealBody(viewport: HTMLElement | null, body: HTMLElement) {
     else if (bottomEdge > bottom) viewport.scrollTop += bottomEdge - bottom;
 }
 
-export default function Space({ textureRevision, onReroll, starfieldRevision, onStarfieldReroll, starAppearance, onStarAppearanceChange, rotationEnabled, onRotationChange, rotationClock }: SpaceProps) {
+export default function Space({ textureRevision, onReroll, starfieldRevision, onStarfieldReroll, starAppearance, onStarAppearanceChange,
+    motionEnabled, onMotionChange, convectionEnabled, onConvectionChange, onReady }: SpaceProps) {
     const [activeProject, setActiveProject] = useState<Project | null>(null);
     const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 60rem)").matches);
     const sceneRef = useRef<HTMLElement>(null);
@@ -127,74 +132,73 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
     }, [desktop, width, height, sceneSize.height, sceneSize.headerBottom, activeProject]);
 
     return (
-        <PlanetProjectionProvider enabled={rotationEnabled} clock={rotationClock}>
-            <main ref={sceneRef} className={`space-scene${desktop ? "" : " space-scene-mobile"}`} aria-label="Space Mode project system" style={{
-                "--space-header-bottom": sceneSize.headerBottom ? `${sceneSize.headerBottom}px` : undefined,
-            } as CSSProperties}>
-                <Starfield revision={starfieldRevision} />
-                <div className="space-controls">
-                    <StarPalettePicker value={starAppearance} onChange={onStarAppearanceChange} />
-                    <button type="button" className="icon-button space-reroll" onClick={onReroll}
-                        aria-label="Reroll planet textures" title="Reroll planet textures">
-                        <RefreshIcon aria-hidden="true" focusable="false" />
-                    </button>
-                    <button type="button" className="icon-button space-starfield-reroll" onClick={onStarfieldReroll}
-                        aria-label="Reroll starfield" title="Reroll starfield">
-                        <StarsIcon aria-hidden="true" focusable="false" />
-                    </button>
-                    <PlanetRotationControl enabled={rotationEnabled} onChange={onRotationChange} />
-                    <span className="space-status" role="status">
-                        {textureRevision > 0 ? `Planet textures regenerated ${textureRevision} ${textureRevision === 1 ? "time" : "times"}.` : ""}
-                    </span>
-                    <span className="space-status" role="status">
-                        {starfieldRevision > 0 ? `Starfield regenerated ${starfieldRevision} ${starfieldRevision === 1 ? "time" : "times"}.` : ""}
-                    </span>
-                </div>
-                <div ref={scrollRef} className="space-viewport">
-                    <div className="space-system" style={desktop ? undefined : { height: `${height}px` }}>
-                        <svg className="space-orbits" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
-                            {orbits.map(({ id, appearance }, index) => {
-                                const orbit = layout.body(appearance, index);
-                                return <ellipse key={id} cx={orbitCenter.x} cy={orbitCenter.y}
-                                    rx={orbit.radiusX} ry={orbit.radiusY}
-                                    transform={`rotate(${orbit.tilt} ${orbitCenter.x} ${orbitCenter.y})`} />;
-                            })}
-                        </svg>
-                        <p id={navigationHelpId} className="space-status">
-                            Use Right or Up to move forward, Left or Down to move back. Navigation wraps.
-                            Press Enter to open project details. Project X has no details yet.
-                        </p>
-                        <ul className="space-bodies" aria-label="Portfolio planetary system" aria-describedby={navigationHelpId}
-                            onFocusCapture={event => {
-                                if (!desktop && event.target instanceof HTMLElement && event.target.matches("[data-space-body]")) {
-                                    revealBody(scrollRef.current, event.target);
-                                }
-                            }}>
-                            {portfolio && <CelestialBody project={portfolio} position={orbitCenter} sceneSize={layout}
-                                diameter={starWidth} height={starHeight} color={starPalette.color} star
-                                starPalette={starPalette} starFinish={starAppearance.finish} starSeed={starAppearance.seed}
-                                selected={activeProject === portfolio} onSelect={setActiveProject} />}
-                            {planets.map((project, index) => {
-                                const appearance = planetAppearance[project.subdomain];
-                                const { position, diameter } = layout.body(appearance, index);
+        <main ref={sceneRef} className={`space-scene${desktop ? "" : " space-scene-mobile"}`} aria-label="Space Mode project system" style={{
+            "--space-header-bottom": sceneSize.headerBottom ? `${sceneSize.headerBottom}px` : undefined,
+        } as CSSProperties}>
+            <Starfield revision={starfieldRevision} />
+            <div className="space-controls">
+                <SolarPerformanceControl enabled={convectionEnabled} motionEnabled={motionEnabled} onChange={onConvectionChange} />
+                <StarPalettePicker value={starAppearance} onChange={onStarAppearanceChange} />
+                <span className="space-mobile-motion"><SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} /></span>
+                <button type="button" className="icon-button space-reroll" onClick={onReroll}
+                    aria-label="Reroll planet textures" title="Reroll planet textures">
+                    <RefreshIcon aria-hidden="true" focusable="false" />
+                </button>
+                <button type="button" className="icon-button space-starfield-reroll" onClick={onStarfieldReroll}
+                    aria-label="Reroll starfield" title="Reroll starfield">
+                    <StarsIcon aria-hidden="true" focusable="false" />
+                </button>
+                <span className="space-status" role="status">
+                    {textureRevision > 0 ? `Planet textures regenerated ${textureRevision} ${textureRevision === 1 ? "time" : "times"}.` : ""}
+                </span>
+                <span className="space-status" role="status">
+                    {starfieldRevision > 0 ? `Starfield regenerated ${starfieldRevision} ${starfieldRevision === 1 ? "time" : "times"}.` : ""}
+                </span>
+            </div>
+            <div ref={scrollRef} className="space-viewport">
+                <div className="space-system" style={desktop ? undefined : { height: `${height}px` }}>
+                    <svg className="space-orbits" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
+                        {orbits.map(({ id, appearance }, index) => {
+                            const orbit = layout.body(appearance, index);
+                            return <ellipse key={id} cx={orbitCenter.x} cy={orbitCenter.y}
+                                rx={orbit.radiusX} ry={orbit.radiusY}
+                                transform={`rotate(${orbit.tilt} ${orbitCenter.x} ${orbitCenter.y})`} />;
+                        })}
+                    </svg>
+                    <p id={navigationHelpId} className="space-status">
+                        Use Right or Up to move forward, Left or Down to move back. Navigation wraps.
+                        Press Enter to open project details. Project X has no details yet.
+                    </p>
+                    <ul className="space-bodies" aria-label="Portfolio planetary system" aria-describedby={navigationHelpId}
+                        onFocusCapture={event => {
+                            if (!desktop && event.target instanceof HTMLElement && event.target.matches("[data-space-body]")) {
+                                revealBody(scrollRef.current, event.target);
+                            }
+                        }}>
+                        {portfolio && <CelestialBody project={portfolio} position={orbitCenter} sceneSize={layout}
+                            diameter={starWidth} height={starHeight} color={starPalette.color} star
+                            starPalette={starPalette} starSeed={starAppearance.seed}
+                            selected={activeProject === portfolio} onSelect={setActiveProject} />}
+                        {planets.map((project, index) => {
+                            const appearance = planetAppearance[project.subdomain];
+                            const { position, diameter } = layout.body(appearance, index);
 
-                                return <CelestialBody key={project.subdomain} project={project} position={position}
-                                    orbitRadius={appearance.orbitRadius}
-                                    sceneSize={layout} diameter={diameter} color={appearance.color}
-                                    surface={{ ...appearance, seed: textureRevision === 0 ? appearance.seed : `${appearance.seed}:${textureRevision}` }} lightRotation={lightRotationFor(position)}
-                                    selected={activeProject === project} onSelect={setActiveProject} />;
-                            })}
-                            <CelestialBody name={projectXAppearance.name} position={projectXLayout.position} sceneSize={layout}
-                                orbitRadius={projectXAppearance.orbitRadius}
-                                diameter={projectXLayout.diameter} color={projectXAppearance.color}
-                                surface={{ ...projectXAppearance, seed: textureRevision === 0 ? projectXAppearance.seed : `${projectXAppearance.seed}:${textureRevision}` }}
-                                lightRotation={lightRotationFor(projectXLayout.position)} />
-                        </ul>
-                    </div>
+                            return <CelestialBody key={project.subdomain} project={project} position={position}
+                                orbitRadius={appearance.orbitRadius}
+                                sceneSize={layout} diameter={diameter} color={appearance.color}
+                                surface={{ ...appearance, seed: textureRevision === 0 ? appearance.seed : `${appearance.seed}:${textureRevision}` }} lightRotation={lightRotationFor(position)}
+                                selected={activeProject === project} onSelect={setActiveProject} />;
+                        })}
+                        <CelestialBody name={projectXAppearance.name} position={projectXLayout.position} sceneSize={layout}
+                            orbitRadius={projectXAppearance.orbitRadius}
+                            diameter={projectXLayout.diameter} color={projectXAppearance.color}
+                            surface={{ ...projectXAppearance, seed: textureRevision === 0 ? projectXAppearance.seed : `${projectXAppearance.seed}:${textureRevision}` }}
+                            lightRotation={lightRotationFor(projectXLayout.position)} />
+                    </ul>
                 </div>
-                <PlanetProjectionCanvas layoutKey={`${desktop}:${sceneSize.width}:${sceneSize.height}:${sceneSize.headerBottom}:${height}`} />
-                {activeProject && <ProjectView key={activeProject.subdomain} project={activeProject} onClose={() => setActiveProject(null)} />}
-            </main>
-        </PlanetProjectionProvider>
+            </div>
+            <PlanetProjectionCanvas layoutKey={`${desktop}:${sceneSize.width}:${sceneSize.height}:${sceneSize.headerBottom}:${height}`} onReady={onReady} />
+            {activeProject && <ProjectView key={activeProject.subdomain} project={activeProject} onClose={() => setActiveProject(null)} />}
+        </main>
     );
 }
