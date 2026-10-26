@@ -19,3 +19,54 @@ export function getOrbitPoint(orbit: Orbit, phase: number): Point {
         y: orbit.center.y + x * Math.sin(tilt) + y * Math.cos(tilt),
     };
 }
+
+/** Upper intersection with a vertical line, including inclined ellipses. */
+export function getUpperOrbitPoint(orbit: Orbit, x: number) {
+    const tilt = orbit.tilt * Math.PI / 180, c = Math.cos(tilt), s = Math.sin(tilt);
+    const horizontalExtent = Math.hypot(orbit.radiusX * c, orbit.radiusY * s);
+    const dx = Math.max(-horizontalExtent, Math.min(horizontalExtent, x - orbit.center.x));
+    const inverseX = 1 / orbit.radiusX ** 2, inverseY = 1 / orbit.radiusY ** 2;
+    const a = c * c * inverseX + s * s * inverseY;
+    const b = 2 * c * s * (inverseX - inverseY) * dx;
+    const d = s * s * inverseX + c * c * inverseY;
+    const dy = (-b - Math.sqrt(Math.max(0, b * b - 4 * d * (a * dx * dx - 1)))) / (2 * d);
+    return {
+        point: { x: orbit.center.x + dx, y: orbit.center.y + dy },
+        angle: Math.atan2((-dx * s + dy * c) / orbit.radiusY,
+            (dx * c + dy * s) / orbit.radiusX) * 180 / Math.PI,
+    };
+}
+
+/** Intersections of two projected ellipses, with each orbit's phase at the crossing. */
+export function getOrbitCrossings(first: Orbit, second: Orbit) {
+    const tilt = second.tilt * Math.PI / 180;
+    const local = (point: Point) => {
+        const x = point.x - second.center.x, y = point.y - second.center.y;
+        return { x: (x * Math.cos(tilt) + y * Math.sin(tilt)) / second.radiusX,
+            y: (-x * Math.sin(tilt) + y * Math.cos(tilt)) / second.radiusY };
+    };
+    const level = (phase: number) => {
+        const point = local(getOrbitPoint(first, phase));
+        return point.x ** 2 + point.y ** 2 - 1;
+    };
+    const crossings: { point: Point; firstPhase: number; secondPhase: number }[] = [];
+    let previous = level(0);
+    for (let phase = 1; phase <= 360; phase++) {
+        const current = level(phase);
+        if (previous * current < 0 || current === 0) {
+            let low = phase - 1, high = phase, lowValue = previous;
+            for (let step = 0; step < 24; step++) {
+                const middle = (low + high) / 2, value = level(middle);
+                if (lowValue * value <= 0) high = middle;
+                else { low = middle; lowValue = value; }
+            }
+            const firstPhase = (low + high) / 2, point = getOrbitPoint(first, firstPhase);
+            if (!crossings.some(crossing => Math.hypot(crossing.point.x - point.x, crossing.point.y - point.y) < 0.01)) {
+                const normalized = local(point);
+                crossings.push({ point, firstPhase, secondPhase: Math.atan2(normalized.y, normalized.x) * 180 / Math.PI });
+            }
+        }
+        previous = current;
+    }
+    return crossings;
+}
