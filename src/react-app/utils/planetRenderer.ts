@@ -7,21 +7,25 @@ import type { StarPalette } from "../data/starAppearance";
 import { generateSolarMaps } from "./solarMaps";
 import { getSolarActivity } from "./solarActivity";
 import { solarCycleSeconds, solarFragment } from "./solarShader";
+import { OrbitalMotion } from "./orbitalMotion";
 
 const vertexSource = `
 attribute vec2 a_point;
 uniform vec2 u_resolution;
 uniform vec4 u_rect;
 varying vec2 v_point;
+varying vec2 v_pixel;
 void main() {
     v_point = a_point;
     vec2 pixel = u_rect.xy + a_point * u_rect.zw * 0.5;
+    v_pixel = pixel;
     gl_Position = vec4(pixel / u_resolution * 2.0 - 1.0, 0.0, 1.0);
 }`;
 
 const fragmentSource = `
 precision highp float;
 varying vec2 v_point;
+varying vec2 v_pixel;
 uniform sampler2D u_map;
 uniform float u_phase;
 uniform vec3 u_light;
@@ -31,6 +35,8 @@ uniform float u_equalArea;
 uniform float u_axisTilt;
 uniform float u_fill;
 uniform float u_terminatorStart;
+uniform float u_behind;
+uniform vec4 u_sunRect;
 const float PI = 3.141592653589793;
 ${solarFragment}
 void main() {
@@ -65,6 +71,10 @@ void main() {
     float light = u_fill + (1.0 - u_fill) * diffuse;
     float limb = mix(0.94, 1.0, smoothstep(0.0, 0.38, normal.z));
     float alpha = 1.0 - smoothstep(1.0 - u_edge, 1.0, radius);
+    if (u_behind > 0.5 && u_sunRect.z > 0.0) {
+        float solarDistance = length((v_pixel - u_sunRect.xy) / (u_sunRect.zw * 0.5));
+        alpha *= smoothstep(0.99, 1.01, solarDistance);
+    }
     gl_FragColor = vec4(albedo * light * limb * alpha, alpha);
 }`;
 
@@ -75,6 +85,8 @@ type Entry = {
     lighting: ReturnType<typeof getPlanetLighting>;
     texture?: WebGLTexture;
     rect?: DOMRect;
+    baseRect?: DOMRect;
+    orbitId?: string;
     light?: [number, number, number];
     loadToken?: object;
     map?: { equalArea?: boolean; axisTilt?: number };
@@ -95,10 +107,11 @@ type SolarEntry = {
     snapshot?: SolarSnapshot;
     snapshotFailed?: string;
 };
-type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "solar" | "solarPhase" | "sunspots" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent", WebGLUniformLocation | null>;
+type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "behind" | "sunRect" | "solar" | "solarPhase" | "sunspots" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent", WebGLUniformLocation | null>;
 
 /** One context and clock for all discs. DOM controls, labels, hit testing and fallback artwork stay intact. */
 export class PlanetRenderer {
+    readonly orbits = new OrbitalMotion(() => this.invalidate());
     private entries = new Set<Entry>();
     private solarEntries = new Set<SolarEntry>();
     private canvas: HTMLCanvasElement | null = null;
@@ -177,7 +190,8 @@ export class PlanetRenderer {
     }
 
     register(element: HTMLElement, options: PlanetTextureOptions, orbitRadius?: number) {
-        const entry: Entry = { element, options, rotation: getPlanetRotation(options.seed, options), lighting: getPlanetLighting(orbitRadius) };
+        const entry: Entry = { element, options, rotation: getPlanetRotation(options.seed, options), lighting: getPlanetLighting(orbitRadius),
+            orbitId: element.closest<HTMLElement>("[data-orbit-id]")?.dataset.orbitId };
         this.entries.add(entry);
         this.resizeObserver?.observe(element);
         this.invalidate();
@@ -252,7 +266,7 @@ export class PlanetRenderer {
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
                 const point = gl.getAttribLocation(program, "a_point");
                 gl.enableVertexAttribArray(point); gl.vertexAttribPointer(point, 2, gl.FLOAT, false, 0, 0);
-                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "solar", "solarPhase", "sunspots", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent"].map(name => [name, gl.getUniformLocation(program, name === "sunspots" ? "u_sunspots[0]" : `u_${name}`)])) as Uniforms;
+                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "behind", "sunRect", "solar", "solarPhase", "sunspots", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent"].map(name => [name, gl.getUniformLocation(program, name === "sunspots" ? "u_sunspots[0]" : `u_${name}`)])) as Uniforms;
                 gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.clearColor(0, 0, 0, 0);
                 gl.uniform1i(this.uniforms.map, 0);
@@ -262,6 +276,7 @@ export class PlanetRenderer {
                 this.syncMotion();
             } catch {
                 this.release();
+                this.orbits.reset();
                 canvas.dataset.renderer = "fallback";
                 availability(false);
                 this.markReady();
@@ -274,6 +289,7 @@ export class PlanetRenderer {
             this.gl = null; this.program = null; this.buffer = null; this.uniforms = null;
             for (const entry of this.entries) { entry.texture = undefined; entry.loadToken = undefined; entry.failed = false; entry.element.removeAttribute("data-projected"); }
             for (const entry of this.solarEntries) this.clearSolar(entry);
+            this.orbits.reset();
             canvas.dataset.renderer = "fallback";
             availability(false);
             this.markReady();
@@ -427,6 +443,7 @@ export class PlanetRenderer {
             this.frame = requestAnimationFrame(this.render);
             return;
         }
+        const previousTime = this.clock.current;
         if (running) {
             if (this.lastTime !== null) this.clock.current += Math.max(0, time - this.lastTime);
             this.lastTime = time;
@@ -435,16 +452,29 @@ export class PlanetRenderer {
         this.solarLastSceneTime = this.clock.current;
         if (this.needsMeasure) {
             this.bounds = canvas.getBoundingClientRect();
+            this.orbits.measure(this.bounds);
             this.clip = canvas.parentElement?.querySelector(".space-viewport")?.getBoundingClientRect() ?? this.bounds;
             for (const entry of this.solarEntries) entry.rect = entry.element.getBoundingClientRect();
             for (const entry of this.entries) {
-                entry.rect = entry.element.getBoundingClientRect();
+                const measured = entry.element.getBoundingClientRect();
+                const offset = this.orbits.get(entry.orbitId);
+                entry.baseRect = new DOMRect(measured.x - (offset?.x ?? 0), measured.y - (offset?.y ?? 0), measured.width, measured.height);
+                entry.rect = measured;
                 const rotation = parseFloat(getComputedStyle(entry.element).getPropertyValue("--light-rotation")) * Math.PI / 180;
                 const depth = entry.lighting.depth;
                 const length = Math.hypot(1, depth);
                 entry.light = [-Math.cos(rotation) / length, Math.sin(rotation) / length, depth / length];
             }
             this.needsMeasure = false;
+        }
+        this.orbits.update(this.clock.current - previousTime);
+        for (const entry of this.entries) {
+            const orbit = this.orbits.get(entry.orbitId), base = entry.baseRect!;
+            if (!orbit) { entry.rect = base; continue; }
+            entry.rect = new DOMRect(base.x + orbit.x, base.y + orbit.y, base.width, base.height);
+            const rotation = orbit.lightRotation * Math.PI / 180;
+            const length = Math.hypot(1, entry.lighting.depth);
+            entry.light = [-Math.cos(rotation) / length, Math.sin(rotation) / length, entry.lighting.depth / length];
         }
         const bounds = this.bounds!, clip = this.clip!;
         const ratio = Math.min(devicePixelRatio || 1, 2, Math.sqrt(8_388_608 / (bounds.width * bounds.height)));
@@ -504,6 +534,10 @@ export class PlanetRenderer {
         }
         gl.activeTexture(gl.TEXTURE0);
         gl.uniform1f(uniforms.solar, 0);
+        const solarRect = this.solarEntries.values().next().value?.rect;
+        gl.uniform4f(uniforms.sunRect, solarRect ? solarRect.left - bounds.left + solarRect.width / 2 : 0,
+            solarRect ? bounds.height - (solarRect.top - bounds.top + solarRect.height / 2) : 0,
+            solarRect?.width ?? 0, solarRect?.height ?? 0);
         for (const entry of this.entries) {
             const rect = entry.rect!;
             if (!rect.width || rect.bottom <= clip.top || rect.top >= clip.bottom || rect.right <= clip.left || rect.left >= clip.right) continue;
@@ -532,13 +566,15 @@ export class PlanetRenderer {
             gl.uniform1f(uniforms.axisTilt, entry.map?.axisTilt ?? 0);
             gl.uniform1f(uniforms.fill, entry.lighting.fill);
             gl.uniform1f(uniforms.terminatorStart, entry.lighting.terminatorStart);
+            const orbit = this.orbits.get(entry.orbitId);
+            gl.uniform1f(uniforms.behind, orbit?.back ? 1 : 0);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
             if (!entry.element.hasAttribute("data-projected")) entry.element.setAttribute("data-projected", "");
             visible++;
         }
         this.dirty = false;
         if (!pending) this.markReady();
-        if (running && visible) this.frame = requestAnimationFrame(this.render);
+        if (running && (visible || this.orbits.hasMotion())) this.frame = requestAnimationFrame(this.render);
         else this.lastTime = null;
     };
 }

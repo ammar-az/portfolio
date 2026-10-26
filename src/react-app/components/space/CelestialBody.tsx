@@ -60,7 +60,8 @@ export default function CelestialBody({ project, name, position, sceneSize, diam
     </>;
 
     return (
-        <li className={`space-body${star ? " space-body-star" : ""}${project ? "" : " space-body-ambient"}`} style={style}>
+        <li className={`space-body${star ? " space-body-star" : ""}${project ? "" : " space-body-ambient"}`} style={style}
+            data-orbit-id={star ? undefined : project?.subdomain ?? "project-x"}>
             {project && onSelect ? <button type="button" className="space-body-content space-body-button" data-project={project.subdomain} data-space-body={project.subdomain}
                 data-selected={selected || undefined} aria-haspopup="dialog"
                 aria-label={`Open ${accessibleName} project details`} onClick={() => onSelect(project)}>
