@@ -42,6 +42,14 @@
     isolation: isolate;
 }
 
+.space-stable-height {
+    position: absolute;
+    width: 0;
+    height: 100svh;
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .space-starfield {
     position: absolute;
     inset: 0;
@@ -83,7 +91,7 @@
     top: calc(var(--space-header-bottom, 4.75rem) + 1rem);
     right: 4.8vw;
     left: 4.8vw;
-    z-index: 1;
+    z-index: 10;
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
@@ -231,13 +239,45 @@
 
 .space-orbits {
     fill: none;
-    stroke: color-mix(in srgb, var(--space-accent) 36%, transparent);
-    stroke-width: 1;
+    --orbit-color: var(--space-accent);
+    --orbit-focus: color-mix(in srgb, var(--space-accent) 64%, #c9efff);
+    --orbit-core: color-mix(in srgb, var(--space-accent) 36%, transparent);
     pointer-events: none;
 }
 
-.space-orbits ellipse {
+.space-orbit > :is(ellipse, path) {
     vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    transition: stroke 160ms ease, stroke-width 160ms ease, opacity 160ms ease;
+}
+
+.space-orbit-core {
+    stroke: var(--orbit-core);
+    stroke-width: 0.85;
+}
+
+.space-orbit-halo {
+    stroke: var(--orbit-color);
+    stroke-width: 3;
+    opacity: 0.065;
+}
+
+.space-orbit[data-active="true"] .space-orbit-core {
+    stroke: var(--orbit-focus);
+    stroke-width: 1.15;
+    opacity: 0.72;
+}
+
+.space-orbit[data-active="true"] .space-orbit-halo {
+    stroke-width: 4;
+    opacity: 0.15;
+}
+
+.space-orbits-transit {
+    z-index: 1;
+    --orbit-color: #e3f3ff;
+    --orbit-core: #e3f3ff55;
+    --orbit-focus: #f0f8ff;
 }
 
 .space-bodies {
@@ -256,10 +296,56 @@
 
 .space-body[data-orbit-id] {
     will-change: translate;
+    pointer-events: none;
 }
 
 .space-body[data-orbit-back="true"] .space-body-sphere {
     box-shadow: none;
+}
+
+.space-scene:not(.space-scene-mobile) .space-body[data-orbit-id] {
+    /* Preserve relative planet sizes as the wider composition scales up. */
+    --body-size: max(2rem, var(--body-diameter));
+}
+
+.space-scene:not(.space-scene-mobile) .space-body[data-orbit-id] .space-body-label {
+    /* Keep small worlds' names close, without shifting the sphere's grid center. */
+    align-self: start;
+    padding-top: clamp(0px, calc((var(--body-size) - 4.5rem) * 0.08), 0.5rem);
+}
+
+.space-body[data-orbit-id] .space-body-content {
+    /* Empty grid cells must not cover a visible planet underneath. */
+    pointer-events: none;
+}
+
+.space-body[data-orbit-id] :is(.space-body-sphere, .space-body-label, .space-body-logo svg) {
+    pointer-events: auto;
+}
+
+.space-scene:not(.space-scene-mobile) .space-body[data-orbit-back="true"] .space-body-content {
+    mask-image: radial-gradient(ellipse var(--orbit-sun-rx) var(--orbit-sun-ry)
+        at calc(50% + var(--orbit-sun-x)) calc(50% + var(--orbit-sun-y)), transparent calc(100% - 1px), #000 100%);
+    /* Unlike an alpha mask, clipping also excludes the hidden area from pointer hits. */
+    clip-path: var(--orbit-sun-clip, none);
+}
+
+.space-scene:not(.space-scene-mobile) .space-body[data-orbit-hidden="true"] .space-body-content * {
+    pointer-events: none;
+}
+
+.space-scene:not(.space-scene-mobile) .space-body-star {
+    transform: none;
+    margin-left: calc(var(--body-diameter) / -2);
+    margin-top: calc(var(--body-height) / -2);
+}
+
+.space-scene:not(.space-scene-mobile) .space-body-star :is(.space-body-logo, .space-body-label) {
+    z-index: 1;
+    left: calc(100% - 8rem);
+    transform: translateX(-50%);
+    text-align: center;
+    filter: drop-shadow(0 2px 4px #000b);
 }
 
 .space-body-content {
@@ -490,7 +576,8 @@
     }
 
     .space-scene-mobile .space-viewport {
-        top: var(--space-header-bottom, 4rem);
+        /* Canvas, stars and identities share the native scroll layer. */
+        top: 0;
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior-y: contain;
@@ -539,12 +626,22 @@
         padding: 0.375rem 0.5rem;
     }
 
+    .space-scene-mobile .space-body[data-orbit-id] {
+        --body-size: max(2.75rem, var(--body-diameter));
+    }
+
+    .space-scene-mobile .space-body[data-orbit-id] .space-body-content {
+        mask-image: var(--orbit-occlusion, none);
+        mask-composite: intersect;
+    }
+
     .space-scene-mobile .space-body-logo {
         width: 2rem;
         height: 2rem;
     }
 
     .space-scene-mobile .space-body-label {
+        align-self: start;
         max-width: calc(44vw - 1rem);
         font-size: 0.8rem;
         overflow-wrap: anywhere;

@@ -4,12 +4,33 @@ import type { PlanetTextureOptions } from "../utils/planetTextures";
 export const spaceScene = {
     width: 1440,
     height: 800,
-    // 1100px tall at a 1250px viewport; visible reach is 50% larger than the earlier crop.
-    star: { heightRatio: 1100 / 1250, aspectRatio: 820 / 1100, offsetRatio: -160 / 1100 },
+    // Sidetrack composition: a full-height foreground sun, extending behind the header.
+    star: { heightRatio: 1.12, aspectRatio: 0.86, offsetRatio: -0.11 },
+    mobileOrbits: {
+        widthPerSecond: 1 / 72, gutterRatio: 0.20,
+        lanes: [
+            { curvature: 1.15, tilt: -7, speed: 1.25 },
+            { curvature: 1.55, tilt: 8, speed: 0.95 },
+            { curvature: 1.45, tilt: -5, speed: 0.78 },
+            { curvature: 1.15, tilt: 7, speed: 0.64 },
+            { curvature: 1.65, tilt: -8, speed: 0.50 },
+            { curvature: 1.05, tilt: 15, speed: -0.85 },
+        ],
+    },
     desktopOrbits: {
-        rightEdges: [360, 610, 810, 1020, 1220, 1360],
-        verticalOffsets: [0, 106, 294, 488, 666, 832],
-        flattening: 0.46, innerTilt: -5, tiltStep: 2.5,
+        // Reach is a fraction of the space between the solar limb and the right inset.
+        // Evenly spaced turns from the smaller inner orbit to the last main lane.
+        // Desktop rates account for these projected paths; mobile has separate lane timing.
+        lanes: [
+            { reach: 0.32, farY: 0.29, nearY: 0.70, tilt: 1, phase: 55, degreesPerSecond: 1.2 },
+            { reach: 0.49, farY: 0.22, nearY: 0.80, tilt: 1.2, phase: 310, degreesPerSecond: 0.82 },
+            { reach: 0.66, farY: 0.145, nearY: 0.90, tilt: 1.4, phase: 45, degreesPerSecond: 0.56 },
+            { reach: 0.83, farY: 0.085, nearY: 0.98, tilt: 1.6, phase: 320, degreesPerSecond: 0.38 },
+            { reach: 1.00, farY: 0.04, nearY: 1.03, tilt: 1.8, phase: 30, degreesPerSecond: 0.27 },
+        ],
+        // Fit Project X between its upper-right turn and a lower turn at the left edge.
+        // Center fraction is relative to the right turn; below 0.5 keeps an open left-side arc.
+        outer: { centerFraction: 0.44, rightY: 0.225, bottomInset: 14, degreesPerSecond: 0.22 },
     },
     // Artistic falloff: outer worlds have deeper shade, while their lit faces stay bright.
     lighting: {

@@ -461,7 +461,8 @@ export class PlanetRenderer {
         const top = Math.min(canvas.height, Math.ceil((bounds.bottom - Math.max(rect.top, clip.top, bounds.top)) * sy));
         const width = right - left, height = top - bottom;
         if (width <= 0 || height <= 0) return false;
-        const key = JSON.stringify([left, bottom, width, height, rect.left, rect.top, rect.width, rect.height, sx, sy, bounds.left, bounds.top]);
+        // Native mobile scrolling moves both boxes together; local geometry and the snapshot stay valid.
+        const key = JSON.stringify([left, bottom, width, height, rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height, sx, sy]);
         if (entry.snapshot?.key !== key && entry.snapshotFailed !== key) {
             this.clearSnapshot(entry);
             const texture = gl.createTexture(), framebuffer = gl.createFramebuffer();
@@ -620,7 +621,9 @@ export class PlanetRenderer {
         gl.uniform4f(uniforms.sunRect, solarRect ? solarRect.left - bounds.left + solarRect.width / 2 : 0,
             solarRect ? bounds.height - (solarRect.top - bounds.top + solarRect.height / 2) : 0,
             solarRect?.width ?? 0, solarRect?.height ?? 0);
-        for (const entry of this.entries) {
+        const planetDrawOrder = [...this.entries].sort((a, b) =>
+            (this.orbits.get(a.orbitId)?.depth ?? 0) - (this.orbits.get(b.orbitId)?.depth ?? 0));
+        for (const entry of planetDrawOrder) {
             const rect = entry.rect!;
             if (!rect.width || rect.bottom <= clip.top || rect.top >= clip.bottom || rect.right <= clip.left || rect.left >= clip.right) continue;
             if (!entry.texture && !entry.loadToken && !entry.failed) {
