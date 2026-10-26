@@ -6,8 +6,11 @@ export const spaceScene = {
     height: 800,
     // 1100px tall at a 1250px viewport; visible reach is 50% larger than the earlier crop.
     star: { heightRatio: 1100 / 1250, aspectRatio: 820 / 1100, offsetRatio: -160 / 1100 },
-    orbitTilt: 8,
-    orbitFlattening: 0.42,
+    desktopOrbits: {
+        rightEdges: [360, 610, 810, 1020, 1220, 1360],
+        verticalOffsets: [0, 106, 294, 488, 666, 832],
+        flattening: 0.46, innerTilt: -5, tiltStep: 2.5,
+    },
     // Artistic falloff: outer worlds have deeper shade, while their lit faces stay bright.
     lighting: {
         inner: { fill: 0.55, depth: 1.7, terminatorStart: -0.6 },
@@ -20,35 +23,36 @@ type PlanetAppearance = PlanetTextureOptions & {
     orbitRadius: number;
     phase: number;
     diameter: number;
+    orbitDegreesPerSecond: number;
 };
 
 // Presentation only; names, identities, and content stay in projects.ts.
 // Angles are in degrees. Initial phases keep all five planets on the visible side.
 export const planetAppearance: Record<string, PlanetAppearance> = {
     "word-wasp": {
-        orbitRadius: 510, phase: 18, diameter: 72,
+        orbitRadius: 510, phase: 18, diameter: 72, orbitDegreesPerSecond: 1.2,
         color: "#dfaa2b", accentColor: "#453215", type: "terrestrial", intense: false, seed: "word-wasp",
     },
     potential: {
-        orbitRadius: 650, phase: -24, diameter: 88,
+        orbitRadius: 650, phase: -24, diameter: 88, orbitDegreesPerSecond: 0.63,
         color: "#b75330", accentColor: "#743a2b", type: "terrestrial", intense: false, seed: "potential",
     },
     tasked: {
-        orbitRadius: 850, phase: 18, diameter: 156,
+        orbitRadius: 850, phase: 18, diameter: 156, orbitDegreesPerSecond: 0.33,
         color: "#528bea", accentColor: "#d8e7f2", type: "giant", intense: true, seed: "tasked",
     },
     ltg: {
-        orbitRadius: 1060, phase: -12, diameter: 140,
+        orbitRadius: 1060, phase: -12, diameter: 140, orbitDegreesPerSecond: 0.23,
         color: "#a787d9", accentColor: "#e2c7e7", type: "giant", intense: true, seed: "ltg",
     },
     "potential-cpp": {
-        orbitRadius: 1280, phase: 7, diameter: 112,
+        orbitRadius: 1280, phase: 7, diameter: 112, orbitDegreesPerSecond: 0.18,
         color: "#73b7b7", accentColor: "#d2e7e2", type: "giant", intense: false, seed: "potential-cpp",
     },
 };
 
 // A scene-only outer world, deliberately independent of the portfolio's project entries.
 export const projectXAppearance: PlanetAppearance & { name: string } = {
-    name: "Project X", orbitRadius: 1480, phase: -18, diameter: 66,
+    name: "Project X", orbitRadius: 1480, phase: -18, diameter: 66, orbitDegreesPerSecond: 0.145,
     color: "#65b97b", accentColor: "#d2edcb", type: "giant", intense: false, seed: "planet-x",
 };

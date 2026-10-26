@@ -95,6 +95,7 @@
 }
 
 .space-reroll,
+.space-orbit-reset,
 .space-performance,
 .space-palette-button,
 .space-starfield-reroll {
@@ -253,6 +254,14 @@
     transform: translate(-50%, -50%);
 }
 
+.space-body[data-orbit-id] {
+    will-change: translate;
+}
+
+.space-body[data-orbit-back="true"] .space-body-sphere {
+    box-shadow: none;
+}
+
 .space-body-content {
     position: absolute;
     top: 50%;
@@ -334,13 +343,13 @@
     background:
         radial-gradient(circle at 22% 50%, #ffffff28, #ffffff00 48%),
         radial-gradient(ellipse at 15% 50%, #0000 20%, #00000010 40%, #0006 67%, #000d 90%, #000f);
-    transform: rotate(var(--light-rotation));
+    transform: rotate(var(--orbit-light-rotation, var(--light-rotation)));
 }
 
 .planet-limb {
     background: radial-gradient(closest-side, #0000 88%, #00000014 96%, #00000040);
     box-shadow: inset -2px 0 3px #000b;
-    transform: rotate(var(--light-rotation));
+    transform: rotate(var(--orbit-light-rotation, var(--light-rotation)));
 }
 
 .space-body-sphere-terrestrial,
@@ -494,8 +503,9 @@
         left: max(1rem, env(safe-area-inset-left));
         right: max(1rem, env(safe-area-inset-right));
         flex-direction: row;
+        flex-wrap: wrap;
         justify-content: center;
-        gap: clamp(0.5rem, 2.4vw, 1.25rem);
+        gap: clamp(0.25rem, 1.2vw, 0.75rem);
         align-items: flex-start;
     }
 
@@ -513,7 +523,7 @@
         left: 50%;
         transform: translateX(-50%);
         width: min(16rem, 100%);
-        max-height: calc(100dvh - var(--space-header-bottom, 4rem) - 6rem - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - var(--space-header-bottom, 4rem) - 8rem - env(safe-area-inset-bottom));
         overflow-y: auto;
         overscroll-behavior: contain;
     }
@@ -550,6 +560,13 @@
         padding: 0;
     }
 
+    .space-scene-mobile .space-body-star {
+        /* Center with margins so the identity can stack above the shared canvas independently. */
+        transform: none;
+        margin-left: calc(var(--body-diameter) / -2);
+        margin-top: calc(var(--body-height) / -2);
+    }
+
     .space-scene-mobile .space-body-star .space-body-logo {
         z-index: 1;
         top: 1.5rem;
@@ -557,9 +574,11 @@
         width: 2.5rem;
         height: 2.5rem;
         transform: translateX(-50%);
+        filter: drop-shadow(0 2px 4px #000a);
     }
 
     .space-scene-mobile .space-body-star .space-body-label {
+        z-index: 1;
         top: 4.5rem;
         left: 50%;
         transform: translateX(-50%);

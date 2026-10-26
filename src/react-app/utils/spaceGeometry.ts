@@ -1,6 +1,6 @@
 export type Point = { x: number; y: number };
 
-type Orbit = {
+export type Orbit = {
     center: Point;
     radiusX: number;
     radiusY: number;

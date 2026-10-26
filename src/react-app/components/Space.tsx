@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { projects } from "../data/projects";
 import type { Project } from "../types/project";
@@ -11,12 +11,21 @@ import RefreshIcon from "../assets/icons/refresh.svg?react";
 import StarsIcon from "../assets/icons/stars.svg?react";
 import StarPalettePicker from "./space/StarPalettePicker";
 import Starfield from "./space/Starfield";
-import { PlanetProjectionCanvas } from "./space/PlanetProjection";
+import { PlanetProjectionCanvas, usePlanetProjection } from "./space/PlanetProjection";
+import OrbitResetControl from "./space/OrbitResetControl";
 import SceneMotionControl from "./space/SceneMotionControl";
 import SolarPerformanceControl from "./space/SolarPerformanceControl";
 import { starPalettes } from "../data/starAppearance";
 import type { StarAppearance } from "../data/starAppearance";
 import "../styles/space-mode.css";
+
+const portfolio = projects.find(project => project.subdomain === "portfolio");
+const planets = projects.filter(project => project.subdomain !== "portfolio")
+    .sort((a, b) => planetAppearance[a.subdomain].orbitRadius - planetAppearance[b.subdomain].orbitRadius);
+const orbits = [
+    ...planets.map(project => ({ id: project.subdomain, appearance: planetAppearance[project.subdomain] })),
+    { id: "project-x", appearance: projectXAppearance },
+];
 
 type SpaceProps = {
     motionEnabled: boolean;
@@ -50,21 +59,18 @@ function revealBody(viewport: HTMLElement | null, body: HTMLElement) {
 export default function Space({ textureRevision, onReroll, starfieldRevision, onStarfieldReroll, starAppearance, onStarAppearanceChange,
     motionEnabled, onMotionChange, convectionEnabled, onConvectionChange, onReady }: SpaceProps) {
     const [activeProject, setActiveProject] = useState<Project | null>(null);
+    const projection = usePlanetProjection();
+    const renderer = projection?.renderer;
+    const reduced = projection?.reduced;
     const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 60rem)").matches);
     const sceneRef = useRef<HTMLElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const mobileStartSet = useRef(false);
     const navigationHelpId = useId();
     const [sceneSize, setSceneSize] = useState(() => ({ width: window.innerWidth, height: window.innerHeight, headerBottom: 0, textScale: 1 }));
-    const portfolio = projects.find(project => project.subdomain === "portfolio");
-    const planets = projects.filter(project => project.subdomain !== "portfolio")
-        .sort((a, b) => planetAppearance[a.subdomain].orbitRadius - planetAppearance[b.subdomain].orbitRadius);
-    const layout = getSpaceLayout(sceneSize, !desktop);
+    const layout = useMemo(() => getSpaceLayout(sceneSize, !desktop), [sceneSize, desktop]);
     const { width, height, center: orbitCenter, starHeight, starWidth } = layout;
     const starPalette = starPalettes.find(palette => palette.id === starAppearance.color) ?? starPalettes[0];
-    const orbits = [
-        ...planets.map(project => ({ id: project.subdomain, appearance: planetAppearance[project.subdomain] })),
-        { id: "project-x", appearance: projectXAppearance },
-    ];
 
     function lightRotationFor(position: Point) {
         // Account for the projected scene's aspect ratio, keeping light aimed at the star.
@@ -75,6 +81,38 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
     }
 
     const projectXLayout = layout.body(projectXAppearance, 5);
+
+    useLayoutEffect(() => {
+        if (desktop) { mobileStartSet.current = false; return; }
+        const viewport = scrollRef.current;
+        if (!viewport || !sceneSize.headerBottom || mobileStartSet.current) return;
+        viewport.scrollTop = viewport.scrollHeight;
+        mobileStartSet.current = true;
+        renderer?.refreshLayout();
+    }, [desktop, sceneSize.headerBottom, renderer]);
+
+    useLayoutEffect(() => {
+        const root = sceneRef.current;
+        const system = root?.querySelector<HTMLElement>(".space-system"), viewport = scrollRef.current;
+        if (!root || !renderer || !system || !viewport) return;
+        const bodies = orbits.flatMap(({ id, appearance }, index) => {
+            const element = root.querySelector<HTMLElement>(`[data-orbit-id="${id}"]`);
+            const body = layout.body(appearance, index);
+            return element ? [{ id, element, orbit: { center: layout.center, radiusX: body.radiusX,
+                radiusY: body.radiusY, tilt: body.tilt }, initialPosition: body.position,
+                phase: body.phase, degreesPerSecond: appearance.orbitDegreesPerSecond * body.speedScale }] : [];
+        });
+        renderer.orbits.configure({ width, height, headerBottom: sceneSize.headerBottom, focusTop: desktop ? sceneSize.headerBottom + 76 : 0,
+            compact: !desktop, system, viewport,
+            center: layout.center, starWidth, starHeight, bodies }, root);
+        renderer.refreshLayout();
+        return () => { renderer.orbits.detach(); renderer.refreshLayout(); };
+        // Geometry changes only; texture/palette/dialog updates must not reset orbital phases.
+    }, [renderer, desktop, layout, width, height, starWidth, starHeight, sceneSize.headerBottom]);
+
+    useLayoutEffect(() => {
+        if (reduced) renderer?.orbits.reset();
+    }, [renderer, desktop, reduced]);
 
     useEffect(() => {
         const query = window.matchMedia("(min-width: 60rem)");
@@ -140,6 +178,7 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
                 <SolarPerformanceControl enabled={convectionEnabled} motionEnabled={motionEnabled} onChange={onConvectionChange} />
                 <StarPalettePicker value={starAppearance} onChange={onStarAppearanceChange} />
                 <span className="space-mobile-motion"><SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} /></span>
+                <OrbitResetControl />
                 <button type="button" className="icon-button space-reroll" onClick={onReroll}
                     aria-label="Reroll planet textures" title="Reroll planet textures">
                     <RefreshIcon aria-hidden="true" focusable="false" />
@@ -170,7 +209,7 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
                         Press Enter to open project details. Project X has no details yet.
                     </p>
                     <ul className="space-bodies" aria-label="Portfolio planetary system" aria-describedby={navigationHelpId}
-                        onFocusCapture={event => {
+                        onFocus={event => {
                             if (!desktop && event.target instanceof HTMLElement && event.target.matches("[data-space-body]")) {
                                 revealBody(scrollRef.current, event.target);
                             }
