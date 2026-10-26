@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { drawStarfield } from "../../utils/starfield";
+import { usePlanetProjection } from "./PlanetProjection";
 
 const maxPixelCount = 8_388_608;
 
-export default function Starfield({ revision }: { revision: number }) {
+export default function Starfield({ revision, maxClusterDiameter }: { revision: number; maxClusterDiameter: number }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const renderer = usePlanetProjection()?.renderer;
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -28,7 +30,8 @@ export default function Starfield({ revision }: { revision: number }) {
             canvas.width = Math.max(1, Math.floor(width * ratio));
             canvas.height = Math.max(1, Math.floor(height * ratio));
             context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
-            drawStarfield(context, width, height, 1871 + revision);
+            const twinkles = drawStarfield(context, width, height, 1871 + revision, maxClusterDiameter);
+            renderer?.setStarfield(twinkles);
         }
 
         function scheduleDraw() {
@@ -57,11 +60,12 @@ export default function Starfield({ revision }: { revision: number }) {
             window.removeEventListener("resize", scheduleDraw);
             resolution.removeEventListener("change", resolutionChanged);
             cancelAnimationFrame(frame);
+            renderer?.setStarfield([]);
             // Release the backing store immediately when switching back to Simple Mode.
             canvas.width = 0;
             canvas.height = 0;
         };
-    }, [revision]);
+    }, [revision, renderer, maxClusterDiameter]);
 
     return <canvas ref={canvasRef} className="space-starfield" aria-hidden="true" />;
 }

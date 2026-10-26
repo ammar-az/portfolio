@@ -3,6 +3,7 @@ import type { PlanetTextureOptions } from "./planetTextures";
 import { seededRandom } from "./seededRandom";
 import { getPlanetRotation } from "./planetRotation";
 import type { PlanetMap } from "./planetMaps";
+import type { GiantStormProfile } from "./giantStorms";
 
 type RGB = [number, number, number];
 const worldWidth = 1024;
@@ -22,7 +23,7 @@ function belt(y: number, reverse = false) {
     return `${reverse ? "L" : "M"}${n(start)} ${n(y)}L${n(end)} ${n(y)}`;
 }
 
-export function generateGiantMapSource(options: PlanetTextureOptions) {
+export function generateGiantMapSource(options: PlanetTextureOptions, includeStorms = true) {
     const primary = rgb(options.color);
     const accent = options.accentColor ? rgb(options.accentColor) : primary.map((c, i) => Math.round(c + ([10, 15, 24][i] - c) * 0.6)) as RGB;
     // Exactly the same random stream, colors, widths, opacity and storm rings as the original SVG.
@@ -50,11 +51,15 @@ export function generateGiantMapSource(options: PlanetTextureOptions) {
         return `<path d="${path}" fill="${color}" opacity="${opacity}"/>` + (rim
             ? `<path d="${belt(y + thickness)}" fill="none" stroke="${rim.color}" stroke-width="${rim.width}" opacity=".55"/>` : "");
     }).join("");
+    const stormProfiles: GiantStormProfile[] = [];
     const storms = artwork.storms.flatMap(storm => {
         const latitudeScale = Math.sqrt(1 - ((128 - storm.y) / 128) ** 2);
         const longitude = Math.asin((storm.x - 128) / (128 * latitudeScale));
         const center = ((0.5 + (longitude + phase) / tau) % 1) * worldWidth;
         const scaleX = worldWidth / (tau * 128 * latitudeScale * Math.cos(longitude));
+        const radius = storm.rings[0].radius;
+        stormProfiles.push({ u: center / worldWidth, v: storm.y / 256,
+            radiusU: radius * scaleX / worldWidth, radiusV: radius * 0.36 / 256, rotation: storm.rotation * Math.PI / 180 });
         // Repeat the same material around the back without shrinking/distorting the visible storm rings.
         return [-2, -1, 0, 1, 2, 3].map(copy => `<g transform="translate(${n(center + copy * worldWidth / 2)} ${n(storm.y)}) scale(${n(scaleX)} 1) rotate(${n(storm.rotation)})">
             ${storm.rings.map(({ radius, color }) => `<ellipse rx="${n(radius)}" ry="${n(radius * 0.36)}" fill="${color}" opacity=".65"/>`).join("")}
@@ -74,15 +79,15 @@ export function generateGiantMapSource(options: PlanetTextureOptions) {
             </filter>
         </defs>
         <rect width="1024" height="256" fill="${options.color}"/>
-        <g filter="url(#flow)">${bands}${storms}</g>
+        <g filter="url(#flow)">${bands}${includeStorms ? storms : ""}</g>
         ${gradientPaths.length ? `<g filter="url(#flow)" opacity="${icyGradientOpacity}" style="mix-blend-mode:soft-light">${gradientPaths.join("")}</g>` : ""}
         <rect width="1024" height="256" filter="url(#grain)" opacity="${options.intense ? ".16" : ".24"}" style="mix-blend-mode:soft-light"/>
     </svg>`;
-    return { svg, axisTilt: artwork.rotation * Math.PI / 180 };
+    return { svg, axisTilt: artwork.rotation * Math.PI / 180, stormProfiles };
 }
 
 export async function generateGiantMap(options: PlanetTextureOptions): Promise<PlanetMap> {
-    const { svg, axisTilt } = generateGiantMapSource(options);
+    const { svg, axisTilt, stormProfiles } = generateGiantMapSource(options, false);
     const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
     const image = new Image();
     try {
@@ -97,7 +102,7 @@ export async function generateGiantMap(options: PlanetTextureOptions): Promise<P
             const pixels = new Uint8Array(context.getImageData(0, 0, canvas.width, canvas.height).data);
             // Alpha is terrain height in our material format, not image opacity.
             for (let i = 3; i < pixels.length; i += 4) pixels[i] = 128;
-            return { width: canvas.width, height: canvas.height, pixels, equalArea: true, axisTilt };
+            return { width: canvas.width, height: canvas.height, pixels, equalArea: true, axisTilt, storms: stormProfiles };
         } finally { canvas.width = 0; canvas.height = 0; }
     } finally { image.removeAttribute("src"); URL.revokeObjectURL(url); }
 }
