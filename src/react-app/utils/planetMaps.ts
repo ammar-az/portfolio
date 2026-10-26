@@ -1,9 +1,10 @@
 import { generateGiantMap } from "./giantMaps";
 import type { PlanetTextureOptions } from "./planetTextures";
 import { seededRandom } from "./seededRandom";
+import type { GiantStormProfile } from "./giantStorms";
 
 type RGB = [number, number, number];
-export type PlanetMap = { width: number; height: number; pixels: Uint8Array<ArrayBuffer>; equalArea?: boolean; axisTilt?: number };
+export type PlanetMap = { width: number; height: number; pixels: Uint8Array<ArrayBuffer>; equalArea?: boolean; axisTilt?: number; storms?: GiantStormProfile[] };
 const cache = new Map<string, PlanetMap | Promise<PlanetMap>>();
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const clamp = (n: number) => Math.max(0, Math.min(1, n));

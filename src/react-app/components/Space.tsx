@@ -173,7 +173,8 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
         <main ref={sceneRef} className={`space-scene${desktop ? "" : " space-scene-mobile"}`} aria-label="Space Mode project system" style={{
             "--space-header-bottom": sceneSize.headerBottom ? `${sceneSize.headerBottom}px` : undefined,
         } as CSSProperties}>
-            <Starfield revision={starfieldRevision} />
+            <Starfield revision={starfieldRevision}
+                maxClusterDiameter={Math.min(36, layout.body(planetAppearance["word-wasp"], 0).diameter / 2)} />
             <div className="space-controls">
                 <SolarPerformanceControl enabled={convectionEnabled} motionEnabled={motionEnabled} onChange={onConvectionChange} />
                 <StarPalettePicker value={starAppearance} onChange={onStarAppearanceChange} />

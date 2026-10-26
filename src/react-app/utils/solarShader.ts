@@ -8,6 +8,7 @@ uniform float u_solar;
 uniform float u_solarPhase;
 uniform sampler2D u_sites;
 uniform vec4 u_sunspots[${solarSpotCount}];
+uniform vec4 u_sunspotFrames[${solarSpotCount}];
 uniform vec3 u_solarPrimary;
 uniform vec3 u_solarHighlight;
 uniform vec3 u_solarShadow;
@@ -21,8 +22,13 @@ vec3 solarSurface(vec3 normal) {
     for (int i = 0; i < ${solarSpotCount}; i++) {
         vec4 spot = u_sunspots[i];
         if (spot.w <= 0.0) continue;
-        float radius = spot.z * (0.35 + 0.65 * sqrt(spot.w));
-        vec2 offset = (uv - spot.xy) / radius;
+        if (dot(normal, spot.xyz) <= 0.0) continue;
+        vec4 frame = u_sunspotFrames[i];
+        vec3 east = vec3(frame.x, 0.0, frame.y);
+        vec3 north = cross(spot.xyz, east);
+        float radius = frame.z * (0.35 + 0.65 * sqrt(spot.w));
+        // A travelling surface field naturally foreshortens and passes around the limb.
+        vec2 offset = vec2(dot(normal, east), -dot(normal, north)) / radius;
         float distanceSquared = dot(offset, offset);
         if (distanceSquared >= 5.76) continue;
         float distance = sqrt(distanceSquared);

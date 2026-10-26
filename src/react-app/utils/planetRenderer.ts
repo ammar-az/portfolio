@@ -8,6 +8,11 @@ import { generateSolarMaps } from "./solarMaps";
 import { getSolarActivity } from "./solarActivity";
 import { solarCycleSeconds, solarFragment } from "./solarShader";
 import { OrbitalMotion } from "./orbitalMotion";
+import { createWebGLProgram } from "./webglProgram";
+import { twinkleVertex, twinkleFragment } from "./twinkleShader";
+import type { TwinkleStar } from "./starfield";
+import { giantStormFragment, getGiantStormActivity, getGiantStormPalette } from "./giantStorms";
+import type { GiantStormProfile } from "./giantStorms";
 
 const vertexSource = `
 attribute vec2 a_point;
@@ -39,6 +44,7 @@ uniform float u_behind;
 uniform vec4 u_sunRect;
 const float PI = 3.141592653589793;
 ${solarFragment}
+${giantStormFragment}
 void main() {
     if (u_solar > 1.5) {
         gl_FragColor = texture2D(u_map, v_point * 0.5 + 0.5);
@@ -57,7 +63,7 @@ void main() {
     vec3 materialNormal = vec3(c * normal.x - s * normal.y, s * normal.x + c * normal.y, normal.z);
     float v = u_equalArea > 0.5 ? 0.5 - materialNormal.y * 0.5 : asin(normal.y) / PI + 0.5;
     vec2 uv = vec2(atan(materialNormal.x, materialNormal.z) / (2.0 * PI) + 0.5 + u_phase / (2.0 * PI), v);
-    vec3 albedo = texture2D(u_map, uv).rgb;
+    vec3 albedo = giantWeather(texture2D(u_map, giantFlow(uv)).rgb, uv);
     if (u_relief > 0.0) {
         float dx = texture2D(u_map, uv + vec2(1.0 / 512.0, 0.0)).a - texture2D(u_map, uv - vec2(1.0 / 512.0, 0.0)).a;
         float dy = texture2D(u_map, uv + vec2(0.0, 1.0 / 256.0)).a - texture2D(u_map, uv - vec2(0.0, 1.0 / 256.0)).a;
@@ -89,7 +95,8 @@ type Entry = {
     orbitId?: string;
     light?: [number, number, number];
     loadToken?: object;
-    map?: { equalArea?: boolean; axisTilt?: number };
+    map?: { equalArea?: boolean; axisTilt?: number; storms?: GiantStormProfile[] };
+    stormPalette: ReturnType<typeof getGiantStormPalette>;
     failed?: boolean;
 };
 type SolarSnapshot = {
@@ -102,12 +109,19 @@ type SolarEntry = {
     seed: number;
     textures?: WebGLTexture[];
     rect?: DOMRect;
+    identity?: DOMRect;
     loadToken?: object;
     failed?: boolean;
     snapshot?: SolarSnapshot;
     snapshotFailed?: string;
 };
-type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "behind" | "sunRect" | "solar" | "solarPhase" | "sunspots" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent", WebGLUniformLocation | null>;
+type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "behind" | "sunRect" | "solar" | "solarPhase" | "sunspots" | "sunspotFrames" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent" | "stormsEnabled" | "storms" | "stormMotion" | "stormPale" | "stormDark", WebGLUniformLocation | null>;
+type TwinklePass = {
+    program: WebGLProgram; buffer: WebGLBuffer; dirty: boolean;
+    attributes: { location: number; size: number; offset: number }[];
+    resolution: WebGLUniformLocation | null; pixelRatio: WebGLUniformLocation | null;
+    time: WebGLUniformLocation | null; occluders: WebGLUniformLocation | null;
+};
 
 /** One context and clock for all discs. DOM controls, labels, hit testing and fallback artwork stay intact. */
 export class PlanetRenderer {
@@ -119,6 +133,11 @@ export class PlanetRenderer {
     private program: WebGLProgram | null = null;
     private buffer: WebGLBuffer | null = null;
     private uniforms: Uniforms | null = null;
+    private pointAttribute = 0;
+    private twinkleStars: TwinkleStar[] = [];
+    private twinklePass: TwinklePass | null = null;
+    private twinkleFailed = false;
+    private twinkleOccluders = new Float32Array(7 * 4);
     private resizeObserver: ResizeObserver | null = null;
     private frame = 0;
     private lastTime: number | null = null;
@@ -135,6 +154,12 @@ export class PlanetRenderer {
     private readyWaiters = new Set<() => void>();
 
     constructor(private clock: { current: number }) {}
+
+    setStarfield(stars: TwinkleStar[]) {
+        this.twinkleStars = stars;
+        if (this.twinklePass) this.twinklePass.dirty = true;
+        this.invalidate();
+    }
 
     whenReady(signal: AbortSignal): Promise<void> {
         if (this.ready || signal.aborted) return Promise.resolve();
@@ -191,6 +216,7 @@ export class PlanetRenderer {
 
     register(element: HTMLElement, options: PlanetTextureOptions, orbitRadius?: number) {
         const entry: Entry = { element, options, rotation: getPlanetRotation(options.seed, options), lighting: getPlanetLighting(orbitRadius),
+            stormPalette: getGiantStormPalette(options),
             orbitId: element.closest<HTMLElement>("[data-orbit-id]")?.dataset.orbitId };
         this.entries.add(entry);
         this.resizeObserver?.observe(element);
@@ -238,35 +264,18 @@ export class PlanetRenderer {
                 const gl = canvas.getContext("webgl", { alpha: true, antialias: false, depth: false, stencil: false, powerPreference: "low-power" });
                 if (!gl) throw new Error("WebGL unavailable");
                 this.gl = gl;
-                const compile = (type: number, source: string) => {
-                    const shader = gl.createShader(type);
-                    if (!shader) throw new Error("Shader allocation failed");
-                    gl.shaderSource(shader, source); gl.compileShader(shader);
-                    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                        const reason = gl.getShaderInfoLog(shader);
-                        gl.deleteShader(shader);
-                        throw new Error(reason ?? "Shader compilation failed");
-                    }
-                    return shader;
-                };
-                const vertex = compile(gl.VERTEX_SHADER, vertexSource);
-                let fragment: WebGLShader;
-                try { fragment = compile(gl.FRAGMENT_SHADER, fragmentSource); }
-                catch (error) { gl.deleteShader(vertex); throw error; }
-                const program = gl.createProgram();
-                if (!program) { gl.deleteShader(vertex); gl.deleteShader(fragment); throw new Error("Program allocation failed"); }
+                const program = createWebGLProgram(gl, vertexSource, fragmentSource);
                 this.program = program;
-                gl.attachShader(program, vertex); gl.attachShader(program, fragment); gl.linkProgram(program);
-                gl.deleteShader(vertex); gl.deleteShader(fragment);
-                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error("Shader linking failed");
                 gl.useProgram(program);
                 this.buffer = gl.createBuffer();
                 if (!this.buffer) throw new Error("Buffer allocation failed");
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
                 const point = gl.getAttribLocation(program, "a_point");
+                this.pointAttribute = point;
                 gl.enableVertexAttribArray(point); gl.vertexAttribPointer(point, 2, gl.FLOAT, false, 0, 0);
-                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "behind", "sunRect", "solar", "solarPhase", "sunspots", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent"].map(name => [name, gl.getUniformLocation(program, name === "sunspots" ? "u_sunspots[0]" : `u_${name}`)])) as Uniforms;
+                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "behind", "sunRect", "solar", "solarPhase", "sunspots", "sunspotFrames", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent", "stormsEnabled", "storms", "stormMotion", "stormPale", "stormDark"].map(name => [name, gl.getUniformLocation(program, ["sunspots", "sunspotFrames", "storms", "stormMotion"].includes(name) ? `u_${name}[0]` : `u_${name}`)])) as Uniforms;
+                this.twinkleFailed = false;
                 gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.clearColor(0, 0, 0, 0);
                 gl.uniform1i(this.uniforms.map, 0);
@@ -287,6 +296,7 @@ export class PlanetRenderer {
             cancelAnimationFrame(this.frame); this.frame = 0;
             this.lastTime = null;
             this.gl = null; this.program = null; this.buffer = null; this.uniforms = null;
+            this.twinklePass = null;
             for (const entry of this.entries) { entry.texture = undefined; entry.loadToken = undefined; entry.failed = false; entry.element.removeAttribute("data-projected"); }
             for (const entry of this.solarEntries) this.clearSolar(entry);
             this.orbits.reset();
@@ -339,6 +349,11 @@ export class PlanetRenderer {
             entry.element.removeAttribute("data-projected");
         }
         for (const entry of this.solarEntries) this.clearSolar(entry);
+        if (this.twinklePass) {
+            this.gl?.deleteBuffer(this.twinklePass.buffer);
+            this.gl?.deleteProgram(this.twinklePass.program);
+            this.twinklePass = null;
+        }
         if (this.buffer) this.gl?.deleteBuffer(this.buffer);
         if (this.program) this.gl?.deleteProgram(this.program);
         this.gl = null; this.program = null; this.buffer = null; this.uniforms = null;
@@ -350,7 +365,7 @@ export class PlanetRenderer {
         const texture = gl.createTexture();
         if (!texture) { entry.failed = true; return; }
         entry.texture = texture;
-        entry.map = { equalArea: map.equalArea, axisTilt: map.axisTilt };
+        entry.map = { equalArea: map.equalArea, axisTilt: map.axisTilt, storms: map.storms };
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
@@ -368,7 +383,9 @@ export class PlanetRenderer {
             gl.bindTexture(gl.TEXTURE_2D, texture);
         });
         gl.uniform1f(uniforms.solar, 1);
-        gl.uniform4fv(uniforms.sunspots, getSolarActivity(entry.seed, this.solarTime));
+        const activity = getSolarActivity(entry.seed, this.solarTime);
+        gl.uniform4fv(uniforms.sunspots, activity.centers);
+        gl.uniform4fv(uniforms.sunspotFrames, activity.frames);
         gl.uniform1f(uniforms.solarPhase, (this.solarTime % (solarCycleSeconds * 1000)) / (solarCycleSeconds * 1000) * Math.PI * 2);
         for (const [uniform, color] of [[uniforms.solarPrimary, entry.palette.color],
             [uniforms.solarHighlight, entry.palette.highlight], [uniforms.solarShadow, entry.palette.shadow]] as const) {
@@ -376,6 +393,63 @@ export class PlanetRenderer {
         }
         gl.uniform1f(uniforms.solarLaneAccent, entry.palette.laneAccent);
         gl.uniform1f(uniforms.edge, 28 / Math.min(entry.rect!.width, entry.rect!.height));
+    }
+
+    /** Sparse points share the scene's WebGL context and clock; the static starfield stays untouched. */
+    private drawTwinkles(bounds: DOMRect, pixelRatio: number) {
+        const gl = this.gl!;
+        if (!this.twinkleStars.length || this.twinkleFailed) return;
+        if (!this.twinklePass) {
+            let program: WebGLProgram | null = null;
+            try {
+                program = createWebGLProgram(gl, twinkleVertex, twinkleFragment);
+                const buffer = gl.createBuffer();
+                if (!buffer) throw new Error("Twinkle buffer allocation failed");
+                this.twinklePass = { program, buffer, dirty: true,
+                    attributes: ([["position", 2, 0], ["shape", 2, 8], ["color", 3, 16], ["cycle", 3, 28]] as const).map(([name, size, offset]) =>
+                        ({ location: gl.getAttribLocation(program!, `a_${name}`), size, offset })),
+                    resolution: gl.getUniformLocation(program, "u_resolution"), pixelRatio: gl.getUniformLocation(program, "u_pixelRatio"),
+                    time: gl.getUniformLocation(program, "u_time"), occluders: gl.getUniformLocation(program, "u_occluders[0]") };
+            } catch {
+                if (program) gl.deleteProgram(program);
+                this.twinkleFailed = true;
+                return;
+            }
+        }
+        const pass = this.twinklePass;
+        gl.useProgram(pass.program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, pass.buffer);
+        if (pass.dirty) {
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.twinkleStars.flatMap(star =>
+                [star.x, star.y, star.radius, star.opacity, ...star.color, star.phase, star.frequency, star.strength])), gl.STATIC_DRAW);
+            pass.dirty = false;
+        }
+        for (const attribute of pass.attributes) {
+            gl.enableVertexAttribArray(attribute.location);
+            gl.vertexAttribPointer(attribute.location, attribute.size, gl.FLOAT, false, 40, attribute.offset);
+        }
+        this.twinkleOccluders.fill(0);
+        let index = 0;
+        for (const entry of this.entries) {
+            if (index >= 6) break;
+            if (!entry.rect) continue;
+            const rect = entry.rect, orbit = this.orbits.get(entry.orbitId);
+            const x = rect.left - bounds.left + rect.width / 2, y = rect.top - bounds.top + rect.height / 2;
+            const group = orbit?.speedBounds ?? { left: -rect.width / 2 - 28, right: rect.width / 2 + 28, top: -rect.height / 2 - 80, bottom: rect.height / 2 + 80 };
+            this.twinkleOccluders.set([x + group.left - 2, y + group.top - 2, x + group.right + 2, y + group.bottom + 2], index++ * 4);
+        }
+        const identity = this.solarEntries.values().next().value?.identity;
+        if (identity) this.twinkleOccluders.set([identity.left - bounds.left, identity.top - bounds.top, identity.right - bounds.left, identity.bottom - bounds.top], 24);
+        gl.uniform2f(pass.resolution, bounds.width, bounds.height);
+        gl.uniform1f(pass.pixelRatio, pixelRatio);
+        gl.uniform1f(pass.time, this.clock.current / 1000);
+        gl.uniform4fv(pass.occluders, this.twinkleOccluders);
+        gl.drawArrays(gl.POINTS, 0, this.twinkleStars.length);
+        for (const attribute of pass.attributes) gl.disableVertexAttribArray(attribute.location);
+        gl.useProgram(this.program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+        gl.enableVertexAttribArray(this.pointAttribute);
+        gl.vertexAttribPointer(this.pointAttribute, 2, gl.FLOAT, false, 0, 0);
     }
 
     /** Cache only the visible solar rectangle, at the canvas's native pixel density. */
@@ -454,7 +528,14 @@ export class PlanetRenderer {
             this.bounds = canvas.getBoundingClientRect();
             this.orbits.measure(this.bounds);
             this.clip = canvas.parentElement?.querySelector(".space-viewport")?.getBoundingClientRect() ?? this.bounds;
-            for (const entry of this.solarEntries) entry.rect = entry.element.getBoundingClientRect();
+            for (const entry of this.solarEntries) {
+                entry.rect = entry.element.getBoundingClientRect();
+                const identity = Array.from(entry.element.closest(".space-body")?.querySelectorAll(".space-body-logo, .space-body-label") ?? [], element => element.getBoundingClientRect());
+                if (identity.length) {
+                    const left = Math.min(...identity.map(rect => rect.left)), top = Math.min(...identity.map(rect => rect.top));
+                    entry.identity = new DOMRect(left, top, Math.max(...identity.map(rect => rect.right)) - left, Math.max(...identity.map(rect => rect.bottom)) - top);
+                }
+            }
             for (const entry of this.entries) {
                 const measured = entry.element.getBoundingClientRect();
                 const offset = this.orbits.get(entry.orbitId);
@@ -482,6 +563,7 @@ export class PlanetRenderer {
         if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT);
+        this.drawTwinkles(bounds, canvas.width / bounds.width);
         gl.enable(gl.SCISSOR_TEST);
         const left = Math.max(0, clip.left - bounds.left), top = Math.max(0, clip.top - bounds.top);
         const right = Math.min(bounds.width, clip.right - bounds.left), bottom = Math.min(bounds.height, clip.bottom - bounds.top);
@@ -566,6 +648,15 @@ export class PlanetRenderer {
             gl.uniform1f(uniforms.axisTilt, entry.map?.axisTilt ?? 0);
             gl.uniform1f(uniforms.fill, entry.lighting.fill);
             gl.uniform1f(uniforms.terminatorStart, entry.lighting.terminatorStart);
+            const profiles = entry.map?.storms;
+            gl.uniform1f(uniforms.stormsEnabled, profiles?.length ? 1 : 0);
+            if (profiles?.length) {
+                const activity = getGiantStormActivity(entry.options.seed, profiles, this.clock.current);
+                gl.uniform4fv(uniforms.storms, activity.geometry);
+                gl.uniform4fv(uniforms.stormMotion, activity.motion);
+                gl.uniform3fv(uniforms.stormPale, entry.stormPalette.pale);
+                gl.uniform3fv(uniforms.stormDark, entry.stormPalette.dark);
+            }
             const orbit = this.orbits.get(entry.orbitId);
             gl.uniform1f(uniforms.behind, orbit?.back ? 1 : 0);
             gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -574,7 +665,7 @@ export class PlanetRenderer {
         }
         this.dirty = false;
         if (!pending) this.markReady();
-        if (running && (visible || this.orbits.hasMotion())) this.frame = requestAnimationFrame(this.render);
+        if (running && (visible || this.orbits.hasMotion() || this.twinkleStars.length)) this.frame = requestAnimationFrame(this.render);
         else this.lastTime = null;
     };
 }
