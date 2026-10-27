@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import useModalDialog from "../hooks/useModalDialog";
 import PortfolioLogo from "./PortfolioLogo";
 import InfoIcon from "../assets/icons/info-circle.svg?react";
@@ -7,12 +6,14 @@ import GitHubIcon from "../assets/icons/github.svg?react";
 import LinkedInIcon from "../assets/icons/linkedin.svg?react";
 import EmailIcon from "../assets/icons/email.svg?react";
 import CloseIcon from "../assets/icons/close.svg?react";
-import planetIconUrl from "../assets/icons/planet.svg?url&no-inline";
+import ModeSelector from "./ModeSelector";
 import SceneMotionControl from "./space/SceneMotionControl";
 import OrbitSpeedControl from "./space/OrbitSpeedControl";
+import HelpIcon from "../assets/icons/help.svg?react";
 
 type HeaderProps = {
     simple?: boolean;
+    onHelp?: () => void;
     onModeChange?: (simple: boolean) => void;
     motionEnabled?: boolean;
     onMotionChange?: (enabled: boolean) => void;
@@ -22,10 +23,23 @@ type HeaderProps = {
     linkedinUrl?: string;
 };
 
-export default function Header({ simple = true, onModeChange, motionEnabled = true, onMotionChange, resumeUrl, email, githubUrl, linkedinUrl }: HeaderProps) {
+export default function Header({ simple = true, onHelp, onModeChange, motionEnabled = true, onMotionChange, resumeUrl, email, githubUrl, linkedinUrl }: HeaderProps) {
     const about = useModalDialog();
     const menu = useModalDialog();
     const [menuOpen, setMenuOpen] = useState(false);
+    const headerRef = useRef<HTMLElement>(null);
+    useLayoutEffect(() => {
+        const header = headerRef.current;
+        if (!header) return;
+        const update = () => {
+            const height = header.getBoundingClientRect().height;
+            if (height > 0) document.documentElement.style.setProperty("--header-height", `${height}px`);
+        };
+        update();
+        const observer = new ResizeObserver(update);
+        observer.observe(header);
+        return () => { observer.disconnect(); document.documentElement.style.removeProperty("--header-height"); };
+    }, []);
 
     function openAbout() {
         closeMenu();
@@ -59,11 +73,9 @@ export default function Header({ simple = true, onModeChange, motionEnabled = tr
             {linkedinUrl ? <a className="header-link header-social-link" href={linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn (opens in a new tab)" title="LinkedIn" onClick={closeMenu}><LinkedInIcon className="header-nav-icon header-linkedin-icon" aria-hidden="true" /><span className="mobile-link-label">LinkedIn</span></a> : <span className="header-link header-social-link header-link-unavailable" aria-disabled="true" aria-label="LinkedIn (link coming soon)" title="LinkedIn — link coming soon"><LinkedInIcon className="header-nav-icon header-linkedin-icon" aria-hidden="true" /><span className="mobile-link-label">LinkedIn · Coming soon</span></span>}
         </div>
         <div className="header-mode-control">
-            {onModeChange ? <div className={`mode-selector${simple ? "" : " mode-selector-space"}`} role="group" aria-label="Portfolio layout">
-                <button type="button" aria-pressed={simple} onClick={() => { closeMenu(); onModeChange(true); }}>Simple</button>
-                <button type="button" aria-pressed={!simple} onClick={() => { closeMenu(); onModeChange(false); }}>Space<span className="mode-icon" style={{ "--mode-icon-source": `url("${planetIconUrl}")` } as CSSProperties} aria-hidden="true" /></button>
-            </div> : <span className="mode-unavailable">Immersive View · Coming soon</span>}
-            {!simple && onMotionChange && <span className="header-motion">
+            {onModeChange ? <ModeSelector simple={simple} onChange={next => { closeMenu(); onModeChange(next); }} />
+                : <span className="mode-unavailable">Immersive View · Coming soon</span>}
+            {onMotionChange && <span className="header-motion" data-inactive={simple || undefined} aria-hidden={simple || undefined} inert={simple}>
                 <SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} />
                 <OrbitSpeedControl />
             </span>}
@@ -72,16 +84,22 @@ export default function Header({ simple = true, onModeChange, motionEnabled = tr
 
     return (
         <>
-            <header className="header">
-                <a className="header-brand" href="/" aria-label="AmmarZ home">
-                    <PortfolioLogo className="header-monogram" aria-hidden="true" />
-                    <span>AmmarZ</span>
-                </a>
+            <header ref={headerRef} className="header">
+                <div className="header-identity">
+                    <div className="header-brand">
+                        <PortfolioLogo className="header-monogram" aria-hidden="true" />
+                        <span>AmmarZ</span>
+                    </div>
+                    {onHelp && <button type="button" className="icon-button header-help" aria-label="Space Mode help" title="Space Mode help"
+                        aria-haspopup="dialog" data-inactive={simple || undefined} aria-hidden={simple || undefined} inert={simple} onClick={onHelp}>
+                        <HelpIcon aria-hidden="true" focusable="false" />
+                    </button>}
+                </div>
                 <nav className="header-nav" aria-label="Main navigation">
                     {navigation}
                 </nav>
                 <div className="header-mobile-actions">
-                    {!simple && onMotionChange && <span className="header-mobile-motion">
+                    {onMotionChange && <span className="header-mobile-motion" data-inactive={simple || undefined} aria-hidden={simple || undefined} inert={simple}>
                         <SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} />
                         <OrbitSpeedControl />
                     </span>}

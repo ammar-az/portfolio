@@ -7,33 +7,6 @@
 }
 
 
-.portfolio-app-space > .header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0.65rem calc(4.8vw - 1rem);
-    border: 0;
-    border-bottom: 1px solid transparent;
-    border-radius: 0;
-    background: linear-gradient(180deg, #0813218c, #08132166);
-    backdrop-filter: none;
-}
-
-.portfolio-app-space > .header::after {
-    content: "";
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 1px;
-    pointer-events: none;
-    background: color-mix(in srgb, var(--space-accent) 55%, transparent);
-    filter: blur(0.45px) drop-shadow(0 0 2px color-mix(in srgb, var(--space-accent) 25%, transparent));
-}
-
 .space-scene {
     position: absolute;
     inset: 0;
@@ -80,12 +53,13 @@
     overscroll-behavior: contain;
     border: 1px solid #589bb766;
     border-radius: 1rem;
-    background: #101820;
+    background: var(--surface-glass);
+    backdrop-filter: blur(12px);
     color: #dce5ed;
     font: inherit;
 }
 
-.space-credits-dialog::backdrop { background: #000a; }
+.space-credits-dialog::backdrop { background: var(--modal-backdrop); }
 .space-credits-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .space-credits-dialog h2 { margin: 0; font-size: 1.2rem; }
 .space-credits-dialog > p { color: #aab8c5; font-size: 0.85rem; }
@@ -143,6 +117,8 @@
 }
 
 .space-controls {
+    --color-border: #355971;
+    --color-border-subtle: #243d50;
     position: absolute;
     top: calc(var(--space-header-bottom, 4.75rem) + 1rem);
     right: 4.8vw;
@@ -178,7 +154,8 @@
 
 .space-performance[aria-pressed="true"] {
     color: #9cdaef;
-    border-color: #589bb777;
+    border-color: #79b7e899;
+    box-shadow: var(--ui-highlight-shadow);
 }
 
 .space-orbiters[aria-pressed="false"] {
@@ -259,7 +236,8 @@
 
 .space-color-option[aria-pressed="true"] {
     background: #ffffff10;
-    border-color: #b5c9e2;
+    border-color: var(--color-ui-accent);
+    box-shadow: var(--ui-highlight-shadow);
 }
 
 .space-status {
@@ -627,10 +605,6 @@
 }
 
 @media (max-width: 59.999rem) {
-    .portfolio-app-space > .header {
-        padding: max(8px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) 8px max(24px, env(safe-area-inset-left));
-    }
-
     .space-scene-mobile .space-viewport {
         /* Canvas, stars and identities share the native scroll layer. */
         top: 0;
@@ -743,12 +717,5 @@
         transform: translateX(-50%);
         text-align: center;
         text-shadow: 0 1px 5px #000;
-    }
-}
-
-@media (max-width: 22.499rem) {
-    .portfolio-app-space > .header {
-        padding-left: max(1rem, env(safe-area-inset-left));
-        padding-right: max(1rem, env(safe-area-inset-right));
     }
 }
