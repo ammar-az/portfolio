@@ -20,6 +20,10 @@ import SolarPerformanceControl from "./space/SolarPerformanceControl";
 import SpaceOrbits from "./space/SpaceOrbits";
 import { starPalettes } from "../data/starAppearance";
 import type { StarAppearance } from "../data/starAppearance";
+import { chooseDeepSky, loadDeepSkyCatalogue } from "../data/deepSky";
+import type { DeepSkyImage } from "../data/deepSky";
+import BackgroundCredits from "./space/BackgroundCredits";
+import PlanetaryOrbitersControl from "./space/PlanetaryOrbitersControl";
 import "../styles/space-mode.css";
 
 const portfolio = projects.find(project => project.subdomain === "portfolio");
@@ -66,6 +70,7 @@ function revealBody(viewport: HTMLElement | null, body: HTMLElement) {
 export default function Space({ textureRevision, onReroll, starfieldRevision, onStarfieldReroll, starAppearance, onStarAppearanceChange,
     motionEnabled, onMotionChange, convectionEnabled, onConvectionChange, onReady }: SpaceProps) {
     const [activeProject, setActiveProject] = useState<Project | null>(null);
+    const [backgroundCatalogue, setBackgroundCatalogue] = useState<DeepSkyImage[]>([]);
     const projection = usePlanetProjection();
     const renderer = projection?.renderer;
     const reduced = projection?.reduced;
@@ -85,6 +90,14 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
     const { width, height, center: orbitCenter, starHeight, starWidth } = layout;
     const orbitalPaths = useMemo(() => orbits.map(({ id, appearance }, index) => ({ id, ...layout.body(appearance, index) })), [layout]);
     const starPalette = starPalettes.find(palette => palette.id === starAppearance.color) ?? starPalettes[0];
+    const backgroundObjects = useMemo(() => chooseDeepSky(1871 + starfieldRevision, desktop, backgroundCatalogue),
+        [starfieldRevision, desktop, backgroundCatalogue]);
+
+    useEffect(() => {
+        let active = true;
+        void loadDeepSkyCatalogue().then(images => { if (active) setBackgroundCatalogue(images); }, () => {});
+        return () => { active = false; };
+    }, []);
 
     function lightRotationFor(position: Point) {
         // Account for the projected scene's aspect ratio, keeping light aimed at the star.
@@ -230,6 +243,7 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
                     aria-label="Reroll planet textures" title="Reroll planet textures">
                     <RefreshIcon aria-hidden="true" focusable="false" />
                 </button>
+                {desktop && <PlanetaryOrbitersControl />}
                 <button type="button" className="icon-button space-starfield-reroll" onClick={onStarfieldReroll}
                     aria-label="Reroll starfield" title="Reroll starfield">
                     <StarsIcon aria-hidden="true" focusable="false" />
@@ -243,7 +257,8 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
             </div>
             <div ref={scrollRef} className="space-viewport">
                 <div className="space-system" style={desktop ? undefined : { height: `${height}px` }}>
-                    <Starfield revision={starfieldRevision}
+                    <Starfield revision={starfieldRevision} desktop={desktop}
+                        objects={backgroundObjects}
                         maxClusterDiameter={Math.min(36, layout.body(planetAppearance["word-wasp"], 0).diameter / 2)} />
                     <SpaceOrbits bodies={orbitalPaths} width={width} height={height} desktop={desktop}
                         viewport={{ width: sceneSize.systemWidth, height: desktop ? sceneSize.systemHeight : sceneSize.height }}
@@ -281,6 +296,7 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
                     <PlanetProjectionCanvas layoutKey={`${desktop}:${sceneSize.systemWidth}:${sceneSize.systemHeight}:${sceneSize.headerBottom}:${height}`} onReady={onReady} />
                 </div>
             </div>
+            <BackgroundCredits images={backgroundObjects} />
             {activeProject && <ProjectView key={activeProject.subdomain} project={activeProject} onClose={() => setActiveProject(null)} />}
         </main>
     );

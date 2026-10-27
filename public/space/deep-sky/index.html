@@ -1,0 +1,47 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="/az.svg">
+    <title>Space background image collection</title>
+    <style>
+        *{box-sizing:border-box}body{background:#06090e;color:#dbe4ed;font:16px/1.5 system-ui;margin:0;padding:clamp(20px,4vw,48px)}
+        a{color:#8bcdeb}h1{line-height:1.2}header{max-width:850px;margin-bottom:28px}input{display:block;margin:8px 0 12px;width:min(100%,440px);padding:12px;border:1px solid #466579;border-radius:8px;background:#0e141d;color:inherit;font:inherit}input:focus-visible,a:focus-visible{outline:2px solid #8bcdeb;outline-offset:3px}
+        main{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px}figure{margin:0;padding:18px;background:#0e141d;border-radius:12px}figure[hidden]{display:none}.preview{display:flex;align-items:center;justify-content:center;min-height:160px;background:#020407;border-radius:8px}img{width:144px;height:144px;object-fit:contain}figcaption{margin-top:12px}h2{font-size:18px;margin:0 0 8px}small{display:block;margin-top:8px}.links{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px}#status{color:#9daebd}
+    </style>
+</head>
+<body>
+<header>
+    <h1>Space background image collection</h1>
+    <p>Small galaxies and nebulae used in the portfolio's seeded starfield. These transparent cutouts are cropped where necessary, resized, black-subtracted and feathered. The scene dims and rotates its selection. Larger publisher images are linked on each card.</p>
+    <p>Images: <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. <a href="https://esahubble.org/copyright/">ESA/Hubble usage terms</a>.</p>
+    <label for="search">Find an object</label>
+    <input id="search" type="search" placeholder="NGC, IC, galaxy, nebula…">
+    <p id="status" role="status">Loading collection…</p>
+</header>
+<main aria-label="Background image collection"></main>
+<script type="module">
+    const main=document.querySelector('main'),status=document.querySelector('#status'),search=document.querySelector('#search');
+    try {
+        const response=await fetch('./sources.json');
+        if(!response.ok)throw new Error('Collection unavailable');
+        const images=await response.json();
+        const link=(text,url)=>{const a=document.createElement('a');a.textContent=text;a.href=url;a.target='_blank';a.rel='noopener noreferrer';return a;};
+        const cards=images.map(image=>{
+            const figure=document.createElement('figure');
+            const preview=link('',image.image);preview.className='preview';
+            const img=document.createElement('img');img.src=image.previewFile;img.alt=image.name;img.width=144;img.height=144;img.loading='lazy';img.decoding='async';preview.append(img);
+            const caption=document.createElement('figcaption'),heading=document.createElement('h2');heading.append(link(image.name,image.page));
+            const credit=document.createElement('small');credit.textContent=image.credit;
+            const links=document.createElement('div');links.className='links';links.append(link('Publisher image',image.image),link('Source & credit',image.page));
+            caption.append(heading,credit,links);
+            figure.append(preview,caption);main.append(figure);
+            return {figure,text:[image.name,image.title,image.kind??''].join(' ').toLowerCase()};
+        });
+        const filter=()=>{const query=search.value.trim().toLowerCase();let count=0;for(const card of cards){card.figure.hidden=!card.text.includes(query);if(!card.figure.hidden)count++;}status.textContent=`${count} of ${images.length} images`;};
+        search.addEventListener('input',filter);filter();
+    }catch{status.textContent='The collection could not load. Please try refreshing the page.';}
+</script>
+</body>
+</html>

@@ -50,6 +50,51 @@
     pointer-events: none;
 }
 
+.space-image-credits {
+    position: absolute;
+    right: 1rem;
+    bottom: 0.85rem;
+    z-index: 9;
+    max-width: min(34rem, calc(100% - 2rem));
+    padding: 0.3rem 0.4rem;
+    border: 0;
+    border-radius: 0.3rem;
+    background: #0005;
+    color: #a6b0be;
+    font: inherit;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    text-align: right;
+    text-shadow: 0 1px 3px #000, 0 0 5px #000;
+    cursor: pointer;
+}
+
+.space-image-credits:hover { color: #e4ecf7; text-decoration: underline; }
+
+.space-credits-dialog {
+    width: min(42rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    padding: 1.25rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid #589bb766;
+    border-radius: 1rem;
+    background: #101820;
+    color: #dce5ed;
+    font: inherit;
+}
+
+.space-credits-dialog::backdrop { background: #000a; }
+.space-credits-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.space-credits-dialog h2 { margin: 0; font-size: 1.2rem; }
+.space-credits-dialog > p { color: #aab8c5; font-size: 0.85rem; }
+.space-credits-dialog ul { display: grid; gap: 1rem; padding: 0; margin: 1.25rem 0; list-style: none; }
+.space-credits-dialog li { display: flex; align-items: center; gap: 1rem; }
+.space-credits-dialog li img { width: 5rem; height: 5rem; flex-shrink: 0; object-fit: contain; background: #030609; border-radius: 0.5rem; }
+.space-credits-dialog li p { margin: 0.35rem 0 0; font-size: 0.8rem; line-height: 1.5; }
+.space-credits-dialog a { color: #9bd5f0; }
+.space-credits-dialog footer { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; font-size: 0.8rem; }
+
 .space-starfield {
     position: absolute;
     inset: 0;
@@ -115,6 +160,7 @@
 .space-reroll,
 .space-orbit-reset,
 .space-performance,
+.space-orbiters,
 .space-palette-button,
 .space-starfield-reroll {
     background: linear-gradient(180deg, #1014198c, #10141966);
@@ -128,7 +174,7 @@
     background: linear-gradient(180deg, #10141999, #10141980);
 }
 
-.space-controls :is(.space-orbit-reset, .space-reroll, .space-starfield-reroll) > svg {
+.space-controls :is(.space-orbit-reset, .space-reroll, .space-orbiters, .space-starfield-reroll) > svg {
     width: 1.625rem;
     height: 1.625rem;
 }
@@ -136,6 +182,10 @@
 .space-performance[aria-pressed="true"] {
     color: #9cdaef;
     border-color: #589bb777;
+}
+
+.space-orbiters[aria-pressed="false"] {
+    opacity: 0.6;
 }
 
 .space-performance:disabled {

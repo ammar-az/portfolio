@@ -20,7 +20,7 @@ type Track = OrbitalBody & {
     back: boolean; depth: number; reachable: boolean; needsStart: boolean;
     lightDirection: [number, number, number]; solarAngularRadius: number; transit: number;
     shadowOpacity: number;
-    halfWidth: number; halfHeight: number; discRadius: number;
+    halfWidth: number; halfHeight: number; discRadius: number; extentRadius: number;
     speedBounds: { left: number; right: number; top: number; bottom: number };
     speedMultiplier: number;
     geometryKey: string;
@@ -102,10 +102,14 @@ export class OrbitalMotion {
     private compactLoop = 1;
     private speed = 1;
     private measured = false;
+    private resetVersions = new Map<string, number>();
 
     constructor(private invalidate: () => void) {}
 
     setSpeed(speed: 1 | 2 | 4) { this.speed = speed; }
+    getSpeed() { return this.speed; }
+    isCompact() { return this.scene?.compact ?? false; }
+    getResetVersion(id: string) { return this.resetVersions.get(id) ?? 0; }
 
     private phaseKey(id: string) { return `${this.scene?.compact ? "mobile" : "desktop"}:${id}`; }
 
@@ -138,7 +142,7 @@ export class OrbitalMotion {
                 back: false, depth: 0, reachable: true, needsStart: !hasAngle,
                 lightDirection: [0, 0, 1], solarAngularRadius: 0, transit: 0,
                 shadowOpacity: 0,
-                halfWidth: 0, halfHeight: 0, discRadius: 0,
+                halfWidth: 0, halfHeight: 0, discRadius: 0, extentRadius: 0,
                 transitMask: root.querySelector<SVGEllipseElement>(`[data-orbit-mask="${body.id}"]`),
                 orbitLines: Array.from(root.querySelectorAll<SVGElement>(`[data-orbit-line="${body.id}"]`)),
                 speedBounds: { left: 0, right: 0, top: 0, bottom: 0 }, speedMultiplier: 1, geometryKey: "" });
@@ -254,6 +258,8 @@ export class OrbitalMotion {
             if (!Number.isFinite(track.angle)) { track.angle = track.phase; track.needsStart = true; }
             if (!Number.isFinite(track.progress)) track.progress = Number.isFinite(track.startProgress) ? track.startProgress : 0;
             track.discRadius = radius;
+            track.extentRadius = scene.compact ? radius
+                : radius * Math.max(1, Number(track.element.dataset.satelliteExtent) || 1);
             track.transitMask?.setAttribute("rx", `${(radius + 1) / this.scale.x}`);
             track.transitMask?.setAttribute("ry", `${(radius + 1) / this.scale.y}`);
             track.halfWidth = content!.width / 2;
@@ -277,8 +283,8 @@ export class OrbitalMotion {
             }
             // Skip only after the entire project (including its glow/identity) clears the screen.
             // The header and control band do not shorten the actual orbital path.
-            const marginX = Math.max(radius + 28, track.halfWidth) + 8;
-            const marginY = Math.max(radius + 28, track.halfHeight) + 8;
+            const marginX = Math.max(radius + 28, track.halfWidth, track.extentRadius) + 8;
+            const marginY = Math.max(radius + 28, track.halfHeight, track.extentRadius) + 8;
             const geometryKey = `${system.width}:${system.height}:${marginX}:${marginY}`;
             // Scrolling moves the viewport over the system; it must not rebuild or skip orbital arcs.
             if (geometryKey === track.geometryKey) continue;
@@ -295,7 +301,7 @@ export class OrbitalMotion {
         }
         if (scene.compact) {
             this.compactGutter = Math.max(scene.compactMotion?.gutter ?? scene.width * 0.20,
-                ...Array.from(this.tracks.values(), track => (track.halfWidth + 24) / this.scale.x));
+                ...Array.from(this.tracks.values(), track => (Math.max(track.halfWidth, track.extentRadius) + 24) / this.scale.x));
             this.compactLoop = scene.width + this.compactGutter * 2;
         }
         this.measured = true;
@@ -303,6 +309,9 @@ export class OrbitalMotion {
     }
 
     reset(id?: string) {
+        for (const track of this.tracks.values()) if (!id || track.id === id) {
+            this.resetVersions.set(track.id, this.getResetVersion(track.id) + 1);
+        }
         if (this.scene?.compact) {
             for (const track of this.tracks.values()) {
                 if (!id || track.id === id) this.compactPhases.set(track.id, 0);
@@ -328,8 +337,8 @@ export class OrbitalMotion {
         if (scene.compact || Math.sin(angle * Math.PI / 180) >= 0) return false;
         const sunX = (scene.center.x - point.x) * this.scale.x, sunY = (scene.center.y - point.y) * this.scale.y;
         return [-1, 1].every(x => [-1, 1].every(y => Math.hypot(
-            (sunX + x * track.halfWidth) / (scene.starWidth / 2),
-            (sunY + y * track.halfHeight) / (scene.starHeight / 2)) < 0.99));
+            (sunX + x * Math.max(track.halfWidth, track.extentRadius)) / (scene.starWidth / 2),
+            (sunY + y * Math.max(track.halfHeight, track.extentRadius)) / (scene.starHeight / 2)) < 0.99));
     }
 
     update(deltaMs: number) {

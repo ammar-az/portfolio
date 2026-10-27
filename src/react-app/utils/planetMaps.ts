@@ -38,7 +38,7 @@ function fractal(x: number, y: number, z: number, seed: number) {
 
 /** Wrapping color (RGB) and unlit terrain height (A); SVG giant materials rasterize asynchronously. */
 export function generatePlanetMap(options: PlanetTextureOptions): PlanetMap | Promise<PlanetMap> {
-    const key = JSON.stringify([options.color, options.accentColor, options.type, options.intense, options.seed]);
+    const key = JSON.stringify([options.color, options.accentColor, options.type, options.intense, options.seed, options.detail]);
     const existing = cache.get(key);
     if (existing) return existing;
     if (options.type === "giant") {
@@ -54,16 +54,20 @@ export function generatePlanetMap(options: PlanetTextureOptions): PlanetMap | Pr
     const seed = Math.floor(random() * 2147483647);
     const primary = color(options.color);
     const accent = options.accentColor ? color(options.accentColor) : primary.map(c => c * 0.4) as RGB;
-    const width = 512, height = 256;
+    const width = options.detail === "moon" ? 128 : 512, height = width / 2;
     const pixels = new Uint8Array(width * height * 4);
     // Edge detail has its own stream so it preserves the existing crater centers and sizes.
     const craterEdgeRandom = seededRandom(`${options.seed}:crater-edges`);
-    const craters = Array.from({ length: options.intense ? 65 : 40 }, () => {
+    const moon = options.detail === "moon";
+    const craterCount = moon ? (options.intense ? 210 : 110) : (options.intense ? 65 : 40);
+    const craterMinimum = moon ? (options.intense ? 0.035 : 0.055) : 0.025;
+    const craterSpread = moon ? (options.intense ? 0.18 : 0.24) : 0.14;
+    const craters = Array.from({ length: craterCount }, () => {
         const longitude = random() * Math.PI * 2, y = random() * 2 - 1;
         const r = Math.sqrt(1 - y * y);
         return {
             x: Math.sin(longitude) * r, y, z: Math.cos(longitude) * r,
-            radius: 0.025 + random() ** 2 * 0.14,
+            radius: craterMinimum + random() ** 2 * craterSpread,
             eastX: Math.cos(longitude), eastZ: -Math.sin(longitude),
             northX: -y * Math.sin(longitude), northY: r, northZ: -y * Math.cos(longitude),
             phase: craterEdgeRandom() * Math.PI * 2, finePhase: craterEdgeRandom() * Math.PI * 2,

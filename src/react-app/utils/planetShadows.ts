@@ -30,5 +30,8 @@ export function getPlanetShadowCasters(receiver: ShadowSphere, spheres: readonly
         if (angle > solarAngle + casterAngle) continue;
         result.push({ sphere: caster, opacity });
     }
-    return result.slice(0, maxPlanetShadowCasters);
+    // Additional moons must not displace a larger/nearer caster just because of registration order.
+    const influence = ({ sphere, opacity }: PlanetShadowCaster) => opacity * sphere.radius ** 2
+        / Math.max(1, sphere.center.reduce((sum, v, i) => sum + (v - receiver.center[i]) ** 2, 0));
+    return result.sort((a, b) => influence(b) - influence(a)).slice(0, maxPlanetShadowCasters);
 }
