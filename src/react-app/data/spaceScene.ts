@@ -30,13 +30,16 @@ export const spaceScene = {
         ],
         // Fit Project X between its upper-right turn and a lower turn at the left edge.
         // Center fraction is relative to the right turn; below 0.5 keeps an open left-side arc.
-        outer: { centerFraction: 0.44, rightY: 0.225, bottomInset: 14, degreesPerSecond: 0.22 },
+        outer: { centerFraction: 0.44, rightY: 0.225, bottomInset: 14, degreesPerSecond: -0.22 },
     },
     // Artistic falloff: outer worlds have deeper shade, while their lit faces stay bright.
     lighting: {
         inner: { fill: 0.55, depth: 1.7, terminatorStart: -0.6 },
         outer: { fill: 0.25, depth: 0.85, terminatorStart: -0.4 },
         falloff: 0.8,
+        // Virtual orbital depth preserves the projected paths; the mobile view is less edge-on.
+        phaseDepth: { desktop: 0.9, mobile: 0.75 },
+        transitFill: 0.18,
     },
 };
 

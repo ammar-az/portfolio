@@ -39,7 +39,7 @@ export default function CelestialBody({ project, name, position, sceneSize, diam
         left: `${position.x / sceneSize.width * 100}%`,
         top: `${position.y / sceneSize.height * 100}%`,
         "--body-diameter": `${diameter}px`,
-        "--body-height": `${height}px`,
+        "--body-height": star ? `${height}px` : undefined,
         "--body-color": color,
         "--light-rotation": `${lightRotation}deg`,
         "--star-highlight": starPalette?.highlight,

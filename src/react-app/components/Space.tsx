@@ -5,6 +5,7 @@ import type { Project } from "../types/project";
 import { planetAppearance, projectXAppearance } from "../data/spaceScene";
 import { getSpaceLayout } from "../utils/spaceLayout";
 import type { Point } from "../utils/spaceGeometry";
+import { hasFiniteSize } from "../utils/spaceGeometry";
 import CelestialBody from "./space/CelestialBody";
 import ProjectView from "./ProjectView";
 import RefreshIcon from "../assets/icons/refresh.svg?react";
@@ -14,6 +15,7 @@ import Starfield from "./space/Starfield";
 import { PlanetProjectionCanvas, usePlanetProjection } from "./space/PlanetProjection";
 import OrbitResetControl from "./space/OrbitResetControl";
 import SceneMotionControl from "./space/SceneMotionControl";
+import OrbitSpeedControl from "./space/OrbitSpeedControl";
 import SolarPerformanceControl from "./space/SolarPerformanceControl";
 import SpaceOrbits from "./space/SpaceOrbits";
 import { starPalettes } from "../data/starAppearance";
@@ -53,7 +55,10 @@ function revealBody(viewport: HTMLElement | null, body: HTMLElement) {
     // Scroll only this viewport; scrollIntoView can also pan the sun's clipped, oversized box.
     const controls = viewport.closest(".space-scene")?.querySelector(".space-controls")?.getBoundingClientRect();
     const top = Math.max(frame.top, controls?.bottom ?? frame.top + 60) + 12;
-    const bottom = frame.bottom - 16;
+    const bottom = frame.top + viewport.clientHeight - 16;
+    const left = frame.left + 16, right = frame.left + viewport.clientWidth - 16;
+    if (bounds.left < left) viewport.scrollLeft += bounds.left - left;
+    else if (bounds.right > right) viewport.scrollLeft += bounds.right - right;
     if (bounds.top < top) viewport.scrollTop += bounds.top - top;
     else if (bottomEdge > bottom) viewport.scrollTop += bottomEdge - bottom;
 }
@@ -70,9 +75,13 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
     const scrollRef = useRef<HTMLDivElement>(null);
     const mobileStartSet = useRef(false);
     const navigationHelpId = useId();
-    const [sceneSize, setSceneSize] = useState(() => ({ width: window.innerWidth, height: window.innerHeight,
-        stableHeight: window.innerHeight, headerBottom: 0, textScale: 1 }));
-    const layout = useMemo(() => getSpaceLayout(sceneSize, !desktop), [sceneSize, desktop]);
+    const [sceneSize, setSceneSize] = useState(() => {
+        const width = Math.max(1, window.innerWidth), height = Math.max(1, window.innerHeight);
+        return { width, systemWidth: width, systemHeight: height, height, stableHeight: height, headerBottom: 0, textScale: 1 };
+    });
+    const layout = useMemo(() => getSpaceLayout(desktop
+        ? { ...sceneSize, width: sceneSize.systemWidth, height: sceneSize.systemHeight }
+        : sceneSize, !desktop), [sceneSize, desktop]);
     const { width, height, center: orbitCenter, starHeight, starWidth } = layout;
     const orbitalPaths = useMemo(() => orbits.map(({ id, appearance }, index) => ({ id, ...layout.body(appearance, index) })), [layout]);
     const starPalette = starPalettes.find(palette => palette.id === starAppearance.color) ?? starPalettes[0];
@@ -80,12 +89,18 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
     function lightRotationFor(position: Point) {
         // Account for the projected scene's aspect ratio, keeping light aimed at the star.
         return Math.atan2(
-            (orbitCenter.y - position.y) * (desktop ? sceneSize.height / height : 1),
-            (orbitCenter.x - position.x) * sceneSize.width / width,
+            (orbitCenter.y - position.y) * (desktop ? sceneSize.systemHeight / height : 1),
+            (orbitCenter.x - position.x) * sceneSize.systemWidth / width,
         ) * 180 / Math.PI + 180;
     }
 
     const projectXLayout = layout.body(projectXAppearance, 5);
+
+    useLayoutEffect(() => {
+        // Do not carry desktop panning into mobile, or mobile's bottom start into desktop.
+        scrollRef.current?.scrollTo(0, 0);
+        renderer?.refreshLayout();
+    }, [desktop, renderer]);
 
     useLayoutEffect(() => {
         if (desktop) { mobileStartSet.current = false; return; }
@@ -106,10 +121,13 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
         const system = root?.querySelector<HTMLElement>(".space-system"), viewport = scrollRef.current;
         if (!root || !renderer || !system || !viewport) return;
         const bounds = root.getBoundingClientRect();
+        const systemBounds = system.getBoundingClientRect();
         // Media-query state and ResizeObserver measurements can arrive in separate commits.
         // Never cache a new layout's starting phases using the previous viewport's dimensions.
         if (desktop !== window.matchMedia("(min-width: 60rem)").matches
-            || Math.abs(bounds.width - sceneSize.width) > 0.5 || Math.abs(bounds.height - sceneSize.height) > 0.5) return;
+            || Math.abs(bounds.width - sceneSize.width) > 0.5 || Math.abs(bounds.height - sceneSize.height) > 0.5
+            || Math.abs(systemBounds.width - sceneSize.systemWidth) > 0.5
+            || Math.abs(systemBounds.height - sceneSize.systemHeight) > 0.5) return;
         const bodies = orbits.flatMap(({ id, appearance }, index) => {
             const element = root.querySelector<HTMLElement>(`[data-orbit-id="${id}"]`);
             const body = layout.body(appearance, index);
@@ -139,19 +157,26 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
         const scene = sceneRef.current;
         if (!scene) return;
         const header = scene.parentElement?.querySelector<HTMLElement>(":scope > .header");
+        const system = scene.querySelector<HTMLElement>(".space-system");
         const updateSize = () => {
             const bounds = scene.getBoundingClientRect();
             const { width, height } = bounds;
+            const systemBounds = system?.getBoundingClientRect() ?? bounds;
+            const systemWidth = systemBounds.width, systemHeight = systemBounds.height;
+            // Device emulation can briefly collapse the layout. Retain the last usable geometry.
+            if (!hasFiniteSize(bounds) || !hasFiniteSize(systemBounds)) return;
             const stableHeight = stableHeightRef.current?.getBoundingClientRect().height || height;
             const headerBottom = header ? header.getBoundingClientRect().bottom - bounds.top : 0;
             const textScale = parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
-            setSceneSize(previous => previous.width === width && previous.height === height && previous.stableHeight === stableHeight
+            setSceneSize(previous => previous.width === width && previous.systemWidth === systemWidth && previous.systemHeight === systemHeight
+                && previous.height === height && previous.stableHeight === stableHeight
                 && previous.headerBottom === headerBottom && previous.textScale === textScale
-                ? previous : { width, height, stableHeight, headerBottom, textScale });
+                ? previous : { width, systemWidth, systemHeight, height, stableHeight, headerBottom, textScale });
         };
         updateSize();
         const observer = new ResizeObserver(updateSize);
         observer.observe(scene);
+        if (system) observer.observe(system);
         if (header) observer.observe(header);
         if (stableHeightRef.current) observer.observe(stableHeightRef.current);
         observer.observe(document.documentElement);
@@ -172,7 +197,7 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
             const next = index < 0 ? 0 : (index + direction + bodies.length) % bodies.length;
             event.preventDefault();
             bodies[next].focus({ preventScroll: true });
-            if (!desktop) revealBody(scrollRef.current, bodies[next]);
+            revealBody(scrollRef.current, bodies[next]);
         };
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
@@ -181,22 +206,25 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
     useLayoutEffect(() => {
         // Keep a focused body visible after orientation/breakpoint changes, without disturbing dialogs.
         const focus = document.activeElement;
-        if (!desktop && focus instanceof HTMLElement && focus.matches("[data-space-body]:focus-visible") && !activeProject) {
+        if (focus instanceof HTMLElement && focus.matches("[data-space-body]:focus-visible") && !activeProject) {
             revealBody(scrollRef.current, focus);
         }
-    }, [desktop, width, height, sceneSize.height, sceneSize.headerBottom, activeProject]);
+    }, [desktop, width, height, sceneSize.systemWidth, sceneSize.systemHeight, sceneSize.height, sceneSize.headerBottom, activeProject]);
 
     return (
         <main ref={sceneRef} className={`space-scene${desktop ? "" : " space-scene-mobile"}`} aria-label="Space Mode project system" style={{
             "--space-header-bottom": sceneSize.headerBottom ? `${sceneSize.headerBottom}px` : undefined,
+            "--orbit-sun-rx": `${starWidth / 2}px`,
+            "--orbit-sun-ry": `${starHeight / 2}px`,
         } as CSSProperties}>
             <div ref={stableHeightRef} className="space-stable-height" aria-hidden="true" />
-            {desktop && <Starfield revision={starfieldRevision}
-                maxClusterDiameter={Math.min(36, layout.body(planetAppearance["word-wasp"], 0).diameter / 2)} />}
             <div className="space-controls">
                 <SolarPerformanceControl enabled={convectionEnabled} motionEnabled={motionEnabled} onChange={onConvectionChange} />
                 <StarPalettePicker value={starAppearance} onChange={onStarAppearanceChange} />
-                <span className="space-mobile-motion"><SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} /></span>
+                <span className="space-mobile-motion">
+                    <SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} />
+                    <OrbitSpeedControl />
+                </span>
                 <OrbitResetControl />
                 <button type="button" className="icon-button space-reroll" onClick={onReroll}
                     aria-label="Reroll planet textures" title="Reroll planet textures">
@@ -215,17 +243,18 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
             </div>
             <div ref={scrollRef} className="space-viewport">
                 <div className="space-system" style={desktop ? undefined : { height: `${height}px` }}>
-                    {!desktop && <Starfield revision={starfieldRevision}
-                        maxClusterDiameter={Math.min(36, layout.body(planetAppearance["word-wasp"], 0).diameter / 2)} />}
+                    <Starfield revision={starfieldRevision}
+                        maxClusterDiameter={Math.min(36, layout.body(planetAppearance["word-wasp"], 0).diameter / 2)} />
                     <SpaceOrbits bodies={orbitalPaths} width={width} height={height} desktop={desktop}
-                        viewport={sceneSize} sun={{ center: orbitCenter, width: starWidth, height: starHeight }} />
+                        viewport={{ width: sceneSize.systemWidth, height: desktop ? sceneSize.systemHeight : sceneSize.height }}
+                        sun={{ center: orbitCenter, width: starWidth, height: starHeight }} />
                     <p id={navigationHelpId} className="space-status">
                         Use Right or Up to move forward, Left or Down to move back. Navigation wraps.
                         Press Enter to open project details. Project X has no details yet.
                     </p>
                     <ul className="space-bodies" aria-label="Portfolio planetary system" aria-describedby={navigationHelpId}
                         onFocus={event => {
-                            if (!desktop && event.target instanceof HTMLElement && event.target.matches("[data-space-body]:focus-visible")) {
+                            if (event.target instanceof HTMLElement && event.target.matches("[data-space-body]:focus-visible")) {
                                 revealBody(scrollRef.current, event.target);
                             }
                         }}>
@@ -249,10 +278,9 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
                             surface={{ ...projectXAppearance, seed: textureRevision === 0 ? projectXAppearance.seed : `${projectXAppearance.seed}:${textureRevision}` }}
                             lightRotation={lightRotationFor(projectXLayout.position)} />
                     </ul>
-                    {!desktop && <PlanetProjectionCanvas layoutKey={`${sceneSize.width}:${sceneSize.height}:${sceneSize.headerBottom}:${height}`} onReady={onReady} />}
+                    <PlanetProjectionCanvas layoutKey={`${desktop}:${sceneSize.systemWidth}:${sceneSize.systemHeight}:${sceneSize.headerBottom}:${height}`} onReady={onReady} />
                 </div>
             </div>
-            {desktop && <PlanetProjectionCanvas layoutKey={`${sceneSize.width}:${sceneSize.height}:${sceneSize.headerBottom}:${height}`} onReady={onReady} />}
             {activeProject && <ProjectView key={activeProject.subdomain} project={activeProject} onClose={() => setActiveProject(null)} />}
         </main>
     );

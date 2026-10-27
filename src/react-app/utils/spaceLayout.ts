@@ -59,7 +59,8 @@ export function getSpaceLayout(viewport: Viewport, compact: boolean) {
                 const localX = dx * Math.cos(tilt) + dy * Math.sin(tilt);
                 const localY = -dx * Math.sin(tilt) + dy * Math.cos(tilt);
                 // Stronger, varied inclinations remain wide enough to wrap completely offscreen.
-                const radiusX = Math.max(width * 0.78, Math.sqrt(-dy * width * lane.curvature));
+                // Keep the starting point inside the ellipse even during very narrow intermediate resizes.
+                const radiusX = Math.max(width * 0.78, Math.sqrt(-dy * width * lane.curvature), Math.abs(localX) * 1.05);
                 const radiusY = -localY / Math.sqrt(1 - (localX / radiusX) ** 2);
                 return {
                     center, position, diameter: diameters[index] * scale,

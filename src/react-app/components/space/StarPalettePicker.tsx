@@ -3,12 +3,10 @@ import type { CSSProperties } from "react";
 import { starPalettes } from "../../data/starAppearance";
 import type { StarAppearance } from "../../data/starAppearance";
 import PaletteIcon from "../../assets/icons/palette.svg?react";
-import RefreshIcon from "../../assets/icons/refresh.svg?react";
 
 type StarPalettePickerProps = { value: StarAppearance; onChange: (value: StarAppearance) => void };
 
 export default function StarPalettePicker({ value, onChange }: StarPalettePickerProps) {
-    const seed = value.seed ?? 1871;
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -54,13 +52,7 @@ export default function StarPalettePicker({ value, onChange }: StarPalettePicker
                         <span>{palette.name}</span>
                     </button>)}
                 </div>
-                <button type="button" className="space-sun-reroll" onClick={() => onChange({ ...value, seed: seed + 1 })}>
-                    <RefreshIcon aria-hidden="true" focusable="false" />Reroll sun
-                </button>
             </div>}
-            <span className="space-status" role="status">
-                {seed > 1871 ? `Sun regenerated ${seed - 1871} ${seed === 1872 ? "time" : "times"}.` : ""}
-            </span>
         </div>
     );
 }

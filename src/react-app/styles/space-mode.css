@@ -76,6 +76,10 @@
 .space-viewport {
     position: absolute;
     inset: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #589bb755 transparent;
 }
 
 .space-system {
@@ -84,6 +88,12 @@
     height: 100%;
     /* Crop the oversized sun without creating a second, focus-scrollable viewport. */
     overflow: clip;
+}
+
+.space-scene:not(.space-scene-mobile) .space-system {
+    /* Preserve a readable composition in narrow or short desktop windows. */
+    min-width: 1200px;
+    min-height: 650px;
 }
 
 .space-controls {
@@ -110,8 +120,17 @@
     background: linear-gradient(180deg, #1014198c, #10141966);
 }
 
+.space-mobile-motion > .icon-button {
+    background: linear-gradient(180deg, #1014198c, #10141966);
+}
+
 .space-controls .icon-button:hover {
     background: linear-gradient(180deg, #10141999, #10141980);
+}
+
+.space-controls :is(.space-orbit-reset, .space-reroll, .space-starfield-reroll) > svg {
+    width: 1.625rem;
+    height: 1.625rem;
 }
 
 .space-performance[aria-pressed="true"] {
@@ -138,6 +157,9 @@
     top: calc(100% + 0.75rem);
     left: 0;
     width: min(16rem, calc(100vw - 5rem));
+    max-height: calc(100dvh - var(--space-header-bottom, 4.75rem) - 5.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 0.9rem;
     background: linear-gradient(180deg, #1118208c, #11182066);
     border: 1px solid var(--color-border);
@@ -183,35 +205,7 @@
     box-shadow: inset 0 0 0 1px #ffffff40;
 }
 
-.space-sun-reroll {
-    flex: 1;
-    min-height: 2.5rem;
-    padding: 0.4rem;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: 0.5rem;
-    background: transparent;
-    color: var(--color-text);
-    font: inherit;
-    font-size: 0.75rem;
-    cursor: pointer;
-}
-
-.space-sun-reroll {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    margin-top: 0.6rem;
-}
-
-.space-sun-reroll svg {
-    width: 1.1rem;
-    height: 1.1rem;
-}
-
-.space-color-option:hover,
-.space-sun-reroll:hover {
+.space-color-option:hover {
     background: #ffffff0a;
 }
 
@@ -254,12 +248,19 @@
 .space-orbit-core {
     stroke: var(--orbit-core);
     stroke-width: 0.85;
+    opacity: 0.55;
+}
+
+.space-orbit-soft {
+    stroke: var(--orbit-color);
+    stroke-width: 1.5;
+    opacity: 0.04;
 }
 
 .space-orbit-halo {
     stroke: var(--orbit-color);
     stroke-width: 3;
-    opacity: 0.065;
+    opacity: 0.025;
 }
 
 .space-orbit[data-active="true"] .space-orbit-core {
@@ -271,6 +272,11 @@
 .space-orbit[data-active="true"] .space-orbit-halo {
     stroke-width: 4;
     opacity: 0.15;
+}
+
+.space-orbit[data-active="true"] .space-orbit-soft {
+    stroke: var(--orbit-focus);
+    opacity: 0.08;
 }
 
 .space-orbits-transit {
@@ -317,6 +323,8 @@
 .space-body[data-orbit-id] .space-body-content {
     /* Empty grid cells must not cover a visible planet underneath. */
     pointer-events: none;
+    mask-image: var(--orbit-occlusion, none);
+    mask-composite: intersect;
 }
 
 .space-body[data-orbit-id] :is(.space-body-sphere, .space-body-label, .space-body-logo svg) {
@@ -324,7 +332,7 @@
 }
 
 .space-scene:not(.space-scene-mobile) .space-body[data-orbit-back="true"] .space-body-content {
-    mask-image: radial-gradient(ellipse var(--orbit-sun-rx) var(--orbit-sun-ry)
+    mask-image: var(--orbit-occlusion, linear-gradient(#000, #000)), radial-gradient(ellipse var(--orbit-sun-rx) var(--orbit-sun-ry)
         at calc(50% + var(--orbit-sun-x)) calc(50% + var(--orbit-sun-y)), transparent calc(100% - 1px), #000 100%);
     /* Unlike an alpha mask, clipping also excludes the hidden area from pointer hits. */
     clip-path: var(--orbit-sun-clip, none);
@@ -603,6 +611,7 @@
 
     .space-scene-mobile .space-mobile-motion {
         display: inline-flex;
+        gap: clamp(0.25rem, 1.2vw, 0.75rem);
     }
 
     .space-scene-mobile .space-palette-panel {
@@ -611,12 +620,6 @@
         transform: translateX(-50%);
         width: min(16rem, 100%);
         max-height: calc(100dvh - var(--space-header-bottom, 4rem) - 8rem - env(safe-area-inset-bottom));
-        overflow-y: auto;
-        overscroll-behavior: contain;
-    }
-
-    .space-scene-mobile .space-sun-reroll {
-        min-height: 2.75rem;
     }
 
     .space-scene-mobile .space-body-content {
@@ -628,11 +631,6 @@
 
     .space-scene-mobile .space-body[data-orbit-id] {
         --body-size: max(2.75rem, var(--body-diameter));
-    }
-
-    .space-scene-mobile .space-body[data-orbit-id] .space-body-content {
-        mask-image: var(--orbit-occlusion, none);
-        mask-composite: intersect;
     }
 
     .space-scene-mobile .space-body-logo {

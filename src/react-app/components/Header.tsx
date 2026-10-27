@@ -9,6 +9,7 @@ import EmailIcon from "../assets/icons/email.svg?react";
 import CloseIcon from "../assets/icons/close.svg?react";
 import planetIconUrl from "../assets/icons/planet.svg?url&no-inline";
 import SceneMotionControl from "./space/SceneMotionControl";
+import OrbitSpeedControl from "./space/OrbitSpeedControl";
 
 type HeaderProps = {
     simple?: boolean;
@@ -62,7 +63,10 @@ export default function Header({ simple = true, onModeChange, motionEnabled = tr
                 <button type="button" aria-pressed={simple} onClick={() => { closeMenu(); onModeChange(true); }}>Simple</button>
                 <button type="button" aria-pressed={!simple} onClick={() => { closeMenu(); onModeChange(false); }}>Space<span className="mode-icon" style={{ "--mode-icon-source": `url("${planetIconUrl}")` } as CSSProperties} aria-hidden="true" /></button>
             </div> : <span className="mode-unavailable">Immersive View · Coming soon</span>}
-            {!simple && onMotionChange && <span className="header-motion"><SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} /></span>}
+            {!simple && onMotionChange && <span className="header-motion">
+                <SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} />
+                <OrbitSpeedControl />
+            </span>}
         </div>
     </>;
 
