@@ -17,18 +17,37 @@ import { getPlanetShadowCasters, maxPlanetShadowCasters } from "./planetShadows"
 import type { ShadowSphere, ShadowSun } from "./planetShadows";
 import { planetShadowFragment } from "./planetShadowShader";
 import { hasFiniteSize } from "./spaceGeometry";
+import { getPlanetSystem, moonMaterial, moonOffset, systemBasis, systemDepthLayers } from "./planetSystems";
+import type { PlanetSystem, Vector3 } from "./planetSystems";
+import { PlanetRings } from "./planetRings";
+import type { RingInstance } from "./planetRings";
+import { ringShadowFragment } from "./ringShader";
+import { createMoonGrid, moonVertexShape } from "./moonShapes";
+import type { MoonShape } from "./moonShapes";
 
 const vertexSource = `
 attribute vec2 a_point;
 uniform vec2 u_resolution;
 uniform vec4 u_rect;
+uniform vec3 u_depth;
 varying vec2 v_point;
 varying vec2 v_pixel;
+${moonVertexShape}
 void main() {
+    if (u_moon > 0.5) {
+        moonSurface(a_point);
+        v_point = v_moonPosition.xy;
+        vec2 pixel = u_rect.xy + v_moonPosition.xy * u_rect.zw * 0.5;
+        v_pixel = pixel;
+        // Keep each moon rigidly layered over other moons, independently of its surface geometry.
+        gl_Position = vec4(pixel / u_resolution * 2.0 - 1.0, -u_depth.x / max(1.0, u_depth.z), 1.0);
+        return;
+    }
     v_point = a_point;
     vec2 pixel = u_rect.xy + a_point * u_rect.zw * 0.5;
     v_pixel = pixel;
-    gl_Position = vec4(pixel / u_resolution * 2.0 - 1.0, 0.0, 1.0);
+    float front = sqrt(max(0.0,1.0-dot(a_point,a_point)));
+    gl_Position = vec4(pixel / u_resolution * 2.0 - 1.0, -(u_depth.x+front*u_depth.y)/max(1.0,u_depth.z), 1.0);
 }`;
 
 const fragmentSource = `
@@ -38,6 +57,7 @@ varying vec2 v_pixel;
 uniform sampler2D u_map;
 uniform float u_phase;
 uniform vec3 u_light;
+uniform vec3 u_tint;
 uniform float u_relief;
 uniform float u_edge;
 uniform float u_equalArea;
@@ -46,45 +66,57 @@ uniform float u_fill;
 uniform float u_terminatorStart;
 uniform float u_behind;
 uniform vec4 u_sunRect;
+uniform float u_moon;
+varying vec3 v_moonNormal;
+varying vec3 v_moonMaterial;
+varying vec3 v_moonPosition;
+varying vec3 v_moonTangent;
 const float PI = 3.141592653589793;
 ${solarFragment}
 ${giantStormFragment}
 ${planetShadowFragment}
+${ringShadowFragment}
 void main() {
     if (u_solar > 1.5) {
         gl_FragColor = texture2D(u_map, v_point * 0.5 + 0.5);
         return;
     }
     float radius = length(v_point);
-    if (radius >= 1.0) discard;
-    vec3 normal = vec3(v_point, sqrt(max(0.0, 1.0 - dot(v_point, v_point))));
+    if (u_moon > 0.5) { if (!gl_FrontFacing) discard; }
+    else if (radius >= 1.0) discard;
+    vec3 normal = u_moon > 0.5 ? normalize(v_moonNormal) : vec3(v_point, sqrt(max(0.0, 1.0 - dot(v_point, v_point))));
     if (u_solar > 0.5) {
         float alpha = 1.0 - smoothstep(1.0 - u_edge, 1.0, radius);
         gl_FragColor = vec4(solarSurface(normal) * alpha, alpha);
         return;
     }
-    vec3 sphereNormal = normal;
+    vec3 sphereNormal = u_moon > 0.5 ? v_moonPosition : normal;
+    float silhouette = normal.z;
     // Giant artwork uses an equal-area cylindrical map to retain the original belt/storm proportions.
     float c = cos(u_axisTilt), s = sin(u_axisTilt);
     vec3 materialNormal = vec3(c * normal.x - s * normal.y, s * normal.x + c * normal.y, normal.z);
-    float v = u_equalArea > 0.5 ? 0.5 - materialNormal.y * 0.5 : asin(normal.y) / PI + 0.5;
-    vec2 uv = vec2(atan(materialNormal.x, materialNormal.z) / (2.0 * PI) + 0.5 + u_phase / (2.0 * PI), v);
-    vec3 albedo = giantWeather(texture2D(u_map, giantFlow(uv)).rgb, uv);
+    if (u_moon > 0.5) materialNormal = normalize(v_moonMaterial);
+    float v = u_equalArea > 0.5 ? 0.5 - materialNormal.y * 0.5 : asin(u_moon > 0.5 ? clamp(materialNormal.y, -1.0, 1.0) : normal.y) / PI + 0.5;
+    vec2 uv = vec2(atan(materialNormal.x, materialNormal.z) / (2.0 * PI) + 0.5 + (u_moon > 0.5 ? 0.0 : u_phase / (2.0 * PI)), v);
+    vec3 albedo = giantWeather(texture2D(u_map, giantFlow(uv)).rgb, uv) * u_tint;
     if (u_relief > 0.0) {
         float dx = texture2D(u_map, uv + vec2(1.0 / 512.0, 0.0)).a - texture2D(u_map, uv - vec2(1.0 / 512.0, 0.0)).a;
         float dy = texture2D(u_map, uv + vec2(0.0, 1.0 / 256.0)).a - texture2D(u_map, uv - vec2(0.0, 1.0 / 256.0)).a;
         vec3 tangent = normalize(vec3(normal.z + 0.00001, 0.0, -normal.x));
+        if (u_moon > 0.5) tangent = normalize(v_moonTangent - normal * dot(normal, v_moonTangent));
         vec3 bitangent = cross(normal, tangent);
-        float latitudeScale = max(0.2, length(normal.xz));
+        float latitudeScale = max(0.2, length(u_moon > 0.5 ? materialNormal.xz : normal.xz));
         normal = normalize(normal - u_relief * (tangent * dx * 512.0 / (4.0 * PI * latitudeScale) + bitangent * dy * 256.0 / (2.0 * PI)));
     }
     // Orbital light direction supplies phases; the extended solar disc softens the terminator.
     float diffuse = smoothstep(u_terminatorStart, 0.95, dot(normal, u_light));
     float sunlight = diffuse;
-    if (diffuse > 0.0) sunlight *= planetShadowVisibility(sphereNormal);
+    if (diffuse > 0.0) sunlight *= planetShadowVisibility(sphereNormal) * ringShadowVisibility(sphereNormal);
     float light = u_fill + (1.0 - u_fill) * sunlight;
     float limb = mix(0.94, 1.0, smoothstep(0.0, 0.38, normal.z));
     float alpha = 1.0 - smoothstep(1.0 - u_edge, 1.0, radius);
+    // Fade the rim using the geometric normal, not crater detail.
+    if (u_moon > 0.5) alpha = smoothstep(0.0, u_edge, 0.5 * max(0.0, silhouette) * max(0.0, silhouette));
     if (u_behind > 0.5 && u_sunRect.z > 0.0) {
         float solarDistance = length((v_pixel - u_sunRect.xy) / (u_sunRect.zw * 0.5));
         alpha *= smoothstep(0.99, 1.01, solarDistance);
@@ -92,20 +124,25 @@ void main() {
     gl_FragColor = vec4(albedo * light * limb * alpha, alpha);
 }`;
 
-type Entry = {
-    element: HTMLElement;
+type Material = {
     options: PlanetTextureOptions;
     rotation: ReturnType<typeof getPlanetRotation>;
     lighting: ReturnType<typeof getPlanetLighting>;
     texture?: WebGLTexture;
-    rect?: DOMRect;
-    baseRect?: DOMRect;
-    orbitId?: string;
-    light?: [number, number, number];
     loadToken?: object;
     map?: { equalArea?: boolean; axisTilt?: number; storms?: GiantStormProfile[] };
     stormPalette: ReturnType<typeof getGiantStormPalette>;
     failed?: boolean;
+};
+type Entry = Material & {
+    element: HTMLElement; rect?: DOMRect; baseRect?: DOMRect; orbitId?: string; light?: Vector3;
+    system: PlanetSystem; satelliteTime: number; resetVersion: number;
+};
+type SphereFrame = {
+    id: string; parent: Entry; material: Material; center: Vector3; rect: DOMRect; depth: number;
+    rotation: ReturnType<typeof getPlanetRotation>; light: Vector3;
+    phase: { solarAngularRadius: number; transit: number }; moon: boolean; opacity: number; tint: Vector3;
+    shape?: MoonShape;
 };
 type SolarSnapshot = {
     texture: WebGLTexture; framebuffer: WebGLFramebuffer; key: string;
@@ -123,7 +160,7 @@ type SolarEntry = {
     snapshot?: SolarSnapshot;
     snapshotFailed?: string;
 };
-type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "behind" | "sunRect" | "solar" | "solarPhase" | "sunspots" | "sunspotFrames" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent" | "stormsEnabled" | "storms" | "stormMotion" | "stormPale" | "stormDark" | "shadowCount" | "shadowCasters" | "shadowFades" | "shadowSun" | "shadowRadius", WebGLUniformLocation | null>;
+type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "behind" | "sunRect" | "solar" | "solarPhase" | "sunspots" | "sunspotFrames" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent" | "stormsEnabled" | "storms" | "stormMotion" | "stormPale" | "stormDark" | "shadowCount" | "shadowCasters" | "shadowFades" | "shadowSun" | "shadowRadius" | "depth" | "ringEnabled" | "ringMap" | "ringParent" | "ringMajor" | "ringMinor" | "ringLimits" | "tint" | "moon" | "moonAxes" | "moonLobes", WebGLUniformLocation | null>;
 type TwinklePass = {
     program: WebGLProgram; buffer: WebGLBuffer; dirty: boolean;
     attributes: { location: number; size: number; offset: number }[];
@@ -142,6 +179,14 @@ export class PlanetRenderer {
     private buffer: WebGLBuffer | null = null;
     private uniforms: Uniforms | null = null;
     private pointAttribute = 0;
+    private sphereBuffer: WebGLBuffer | null = null;
+    private sphereVertexCount = 0;
+    private moonBuffer: WebGLBuffer | null = null;
+    private moonVertexCount = 0;
+    private moonMaterials = new Map<number, Material>();
+    private rings: PlanetRings | null = null;
+    private ringsFailed = false;
+    private systemsEnabled = true;
     private twinkleStars: TwinkleStar[] = [];
     private twinklePass: TwinklePass | null = null;
     private twinkleFailed = false;
@@ -164,7 +209,17 @@ export class PlanetRenderer {
     private shadowCasters = new Float32Array(maxPlanetShadowCasters * 4);
     private shadowFades = new Float32Array(maxPlanetShadowCasters);
 
-    constructor(private clock: { current: number }) {}
+    constructor(private clock: { current: number }) { }
+
+    setSystemsEnabled(enabled: boolean) {
+        if (this.systemsEnabled === enabled) return;
+        this.systemsEnabled = enabled;
+        for (const entry of this.entries) {
+            const body = entry.element.closest<HTMLElement>("[data-orbit-id]");
+            if (body) body.dataset.satelliteExtent = `${enabled ? entry.system.extent : 1}`;
+        }
+        this.invalidate();
+    }
 
     setShadowsEnabled(enabled: boolean) {
         this.shadowsEnabled = enabled;
@@ -231,9 +286,14 @@ export class PlanetRenderer {
     }
 
     register(element: HTMLElement, options: PlanetTextureOptions, orbitRadius?: number) {
-        const entry: Entry = { element, options, rotation: getPlanetRotation(options.seed, options), lighting: getPlanetLighting(orbitRadius),
+        const entry: Entry = {
+            element, options, rotation: getPlanetRotation(options.seed, options), lighting: getPlanetLighting(orbitRadius),
+            system: getPlanetSystem(options), satelliteTime: 0, resetVersion: 0,
             stormPalette: getGiantStormPalette(options),
-            orbitId: element.closest<HTMLElement>("[data-orbit-id]")?.dataset.orbitId };
+            orbitId: element.closest<HTMLElement>("[data-orbit-id]")?.dataset.orbitId
+        };
+        const body = element.closest<HTMLElement>("[data-orbit-id]");
+        if (body) body.dataset.satelliteExtent = `${this.systemsEnabled ? entry.system.extent : 1}`;
         this.entries.add(entry);
         this.resizeObserver?.observe(element);
         this.invalidate();
@@ -242,6 +302,7 @@ export class PlanetRenderer {
             if (entry.texture) this.gl?.deleteTexture(entry.texture);
             element.removeAttribute("data-projected");
             this.entries.delete(entry);
+            if (body) delete body.dataset.satelliteExtent;
             this.invalidate();
         };
     }
@@ -277,7 +338,7 @@ export class PlanetRenderer {
         this.ready = false;
         const initialize = () => {
             try {
-                const gl = canvas.getContext("webgl", { alpha: true, antialias: false, depth: false, stencil: false, powerPreference: "low-power" });
+                const gl = canvas.getContext("webgl", { alpha: true, antialias: false, depth: true, stencil: false, powerPreference: "low-power" });
                 if (!gl) throw new Error("WebGL unavailable");
                 this.gl = gl;
                 const program = createWebGLProgram(gl, vertexSource, fragmentSource);
@@ -287,11 +348,24 @@ export class PlanetRenderer {
                 if (!this.buffer) throw new Error("Buffer allocation failed");
                 gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+                // A fixed grid supplies curved depth without fragment-depth extensions or new dependencies.
+                const mesh: number[] = [];
+                for (let y = 0; y < 40; y++)for (let x = 0; x < 40; x++) {
+                    const a = x / 20 - 1, b = y / 20 - 1, c = (x + 1) / 20 - 1, d = (y + 1) / 20 - 1;
+                    mesh.push(a, b, c, b, a, d, a, d, c, b, c, d);
+                }
+                this.sphereVertexCount = mesh.length / 2;
+                this.sphereBuffer = gl.createBuffer();
+                if (!this.sphereBuffer) throw new Error("Sphere depth buffer allocation failed");
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.sphereBuffer); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh), gl.STATIC_DRAW);
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
                 const point = gl.getAttribLocation(program, "a_point");
                 this.pointAttribute = point;
                 gl.enableVertexAttribArray(point); gl.vertexAttribPointer(point, 2, gl.FLOAT, false, 0, 0);
-                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "behind", "sunRect", "solar", "solarPhase", "sunspots", "sunspotFrames", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent", "stormsEnabled", "storms", "stormMotion", "stormPale", "stormDark", "shadowCount", "shadowCasters", "shadowFades", "shadowSun", "shadowRadius"].map(name => [name, gl.getUniformLocation(program, ["sunspots", "sunspotFrames", "storms", "stormMotion", "shadowCasters", "shadowFades"].includes(name) ? `u_${name}[0]` : `u_${name}`)])) as Uniforms;
+                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "behind", "sunRect", "solar", "solarPhase", "sunspots", "sunspotFrames", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent", "stormsEnabled", "storms", "stormMotion", "stormPale", "stormDark", "shadowCount", "shadowCasters", "shadowFades", "shadowSun", "shadowRadius", "depth", "ringEnabled", "ringMap", "ringParent", "ringMajor", "ringMinor", "ringLimits", "tint", "moon", "moonAxes", "moonLobes"].map(name => [name, gl.getUniformLocation(program, ["sunspots", "sunspotFrames", "storms", "stormMotion", "shadowCasters", "shadowFades", "moonLobes"].includes(name) ? `u_${name}[0]` : `u_${name}`)])) as Uniforms;
+                gl.uniform1i(this.uniforms.ringMap, 2);
                 this.twinkleFailed = false;
+                this.ringsFailed = false;
                 gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.clearColor(0, 0, 0, 0);
                 gl.uniform1i(this.uniforms.map, 0);
@@ -313,6 +387,8 @@ export class PlanetRenderer {
             this.lastTime = null;
             this.gl = null; this.program = null; this.buffer = null; this.uniforms = null;
             this.twinklePass = null;
+            this.rings = null; this.sphereBuffer = null; this.moonBuffer = null;
+            for (const material of this.moonMaterials.values()) { material.texture = undefined; material.failed = false; }
             for (const entry of this.entries) { entry.texture = undefined; entry.loadToken = undefined; entry.failed = false; entry.element.removeAttribute("data-projected"); }
             for (const entry of this.solarEntries) this.clearSolar(entry);
             this.orbits.reset();
@@ -367,6 +443,12 @@ export class PlanetRenderer {
             entry.element.removeAttribute("data-projected");
         }
         for (const entry of this.solarEntries) this.clearSolar(entry);
+        for (const material of this.moonMaterials.values()) if (material.texture) this.gl?.deleteTexture(material.texture);
+        this.moonMaterials.clear(); this.rings?.dispose(); this.rings = null;
+        if (this.sphereBuffer) this.gl?.deleteBuffer(this.sphereBuffer);
+        this.sphereBuffer = null;
+        if (this.moonBuffer) this.gl?.deleteBuffer(this.moonBuffer);
+        this.moonBuffer = null;
         if (this.twinklePass) {
             this.gl?.deleteBuffer(this.twinklePass.buffer);
             this.gl?.deleteProgram(this.twinklePass.program);
@@ -377,7 +459,7 @@ export class PlanetRenderer {
         this.gl = null; this.program = null; this.buffer = null; this.uniforms = null;
     }
 
-    private upload(entry: Entry, map: PlanetMap) {
+    private upload(entry: Material, map: PlanetMap) {
         const gl = this.gl;
         if (!gl) return;
         const texture = gl.createTexture();
@@ -388,10 +470,11 @@ export class PlanetRenderer {
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, map.equalArea ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+        const mipmapped = map.equalArea || entry.options.detail === "moon";
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mipmapped ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, map.width, map.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, map.pixels);
-        if (map.equalArea) gl.generateMipmap(gl.TEXTURE_2D);
+        if (mipmapped) gl.generateMipmap(gl.TEXTURE_2D);
     }
 
     private prepareSolar(entry: SolarEntry) {
@@ -406,7 +489,7 @@ export class PlanetRenderer {
         gl.uniform4fv(uniforms.sunspotFrames, activity.frames);
         gl.uniform1f(uniforms.solarPhase, (this.solarTime % (solarCycleSeconds * 1000)) / (solarCycleSeconds * 1000) * Math.PI * 2);
         for (const [uniform, color] of [[uniforms.solarPrimary, entry.palette.color],
-            [uniforms.solarHighlight, entry.palette.highlight], [uniforms.solarShadow, entry.palette.shadow]] as const) {
+        [uniforms.solarHighlight, entry.palette.highlight], [uniforms.solarShadow, entry.palette.shadow]] as const) {
             gl.uniform3fv(uniform, [1, 3, 5].map(index => parseInt(color.slice(index, index + 2), 16) / 255));
         }
         gl.uniform1f(uniforms.solarLaneAccent, entry.palette.laneAccent);
@@ -423,11 +506,13 @@ export class PlanetRenderer {
                 program = createWebGLProgram(gl, twinkleVertex, twinkleFragment);
                 const buffer = gl.createBuffer();
                 if (!buffer) throw new Error("Twinkle buffer allocation failed");
-                this.twinklePass = { program, buffer, dirty: true,
+                this.twinklePass = {
+                    program, buffer, dirty: true,
                     attributes: ([["position", 2, 0], ["shape", 2, 8], ["color", 3, 16], ["cycle", 3, 28]] as const).map(([name, size, offset]) =>
                         ({ location: gl.getAttribLocation(program!, `a_${name}`), size, offset })),
                     resolution: gl.getUniformLocation(program, "u_resolution"), pixelRatio: gl.getUniformLocation(program, "u_pixelRatio"),
-                    time: gl.getUniformLocation(program, "u_time"), occluders: gl.getUniformLocation(program, "u_occluders[0]") };
+                    time: gl.getUniformLocation(program, "u_time"), occluders: gl.getUniformLocation(program, "u_occluders[0]")
+                };
             } catch {
                 if (program) gl.deleteProgram(program);
                 this.twinkleFailed = true;
@@ -585,7 +670,13 @@ export class PlanetRenderer {
         const pixelWidth = Math.max(1, Math.round(bounds.width * ratio)), pixelHeight = Math.max(1, Math.round(bounds.height * ratio));
         if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
         gl.viewport(0, 0, canvas.width, canvas.height);
-        gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT);
+        const depthRange = Math.max(bounds.width, bounds.height) * 4;
+        gl.disable(gl.DEPTH_TEST); gl.depthMask(true);
+        gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.useProgram(this.program); gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+        gl.uniform1f(uniforms.moon, 0);
+        gl.enableVertexAttribArray(this.pointAttribute); gl.vertexAttribPointer(this.pointAttribute, 2, gl.FLOAT, false, 0, 0);
+        gl.uniform3f(uniforms.depth, 0, 0, depthRange);
         this.drawTwinkles(bounds, canvas.width / bounds.width);
         gl.enable(gl.SCISSOR_TEST);
         const left = Math.max(0, clip.left - bounds.left), top = Math.max(0, clip.top - bounds.top);
@@ -643,80 +734,155 @@ export class PlanetRenderer {
         gl.uniform4f(uniforms.sunRect, solarRect ? solarRect.left - bounds.left + solarRect.width / 2 : 0,
             solarRect ? bounds.height - (solarRect.top - bounds.top + solarRect.height / 2) : 0,
             solarRect?.width ?? 0, solarRect?.height ?? 0);
-        const planetDrawOrder = [...this.entries].sort((a, b) =>
-            (this.orbits.get(a.orbitId)?.depth ?? 0) - (this.orbits.get(b.orbitId)?.depth ?? 0));
-        const shadowSpheres = new Map<Entry, ShadowSphere>();
         const shadowSun: ShadowSun | null = solarRect ? {
             center: [solarRect.left + solarRect.width / 2, -solarRect.top - solarRect.height / 2, 0],
             radius: Math.min(solarRect.width, solarRect.height) / 2,
         } : null;
-        if (this.shadowsEnabled && shadowSun) {
-            for (const entry of planetDrawOrder) {
-                const orbit = this.orbits.get(entry.orbitId), rect = entry.rect;
-                if (orbit && rect) shadowSpheres.set(entry, { id: orbit.id,
-                    center: [rect.left + rect.width / 2, -rect.top - rect.height / 2, orbit.depth],
-                    radius: rect.width / 2, opacity: orbit.shadowOpacity });
+        // Parent holds stop orbital travel only. Global pause/reduced motion freeze this shared clock.
+        const bodies: SphereFrame[] = [], ringFrames: RingInstance[] = [];
+        for (const entry of this.entries) {
+            const rect = entry.rect!, orbit = this.orbits.get(entry.orbitId), radius = rect.width / 2;
+            const center: Vector3 = [rect.left + radius, -rect.top - radius, orbit?.depth ?? 0];
+            const reset = this.orbits.getResetVersion(entry.orbitId ?? '');
+            if (reset !== entry.resetVersion) { entry.satelliteTime = 0; entry.resetVersion = reset; }
+            entry.satelliteTime += (this.clock.current - previousTime) * this.orbits.getSpeed();
+            bodies.push({
+                id: entry.orbitId ?? entry.options.seed.toString(), parent: entry, material: entry, rect, center,
+                depth: center[2], rotation: entry.rotation, light: entry.light!,
+                phase: orbit ?? { solarAngularRadius: 0, transit: 0 }, moon: false,
+                opacity: orbit?.shadowOpacity ?? 1, tint: [1, 1, 1],
+            });
+            if (!this.systemsEnabled || this.orbits.isCompact()) continue;
+            const axis = entry.map?.axisTilt ?? 0;
+            if (entry.system.ring) ringFrames.push({ id: entry.orbitId!, profile: entry.system.ring, center, radius, angle: axis, opacity: 1 });
+            for (const [index, moon] of entry.system.moons.entries()) {
+                let material = this.moonMaterials.get(moon.material);
+                if (!material) {
+                    const options = moonMaterial(moon.material);
+                    material = { options, rotation: getPlanetRotation(options.seed, options), lighting: { ...entry.lighting, fill: Math.min(.28, entry.lighting.fill) }, stormPalette: getGiantStormPalette(options) };
+                    this.moonMaterials.set(moon.material, material);
+                }
+                const offset = moonOffset(moon, radius, entry.satelliteTime, axis);
+                const moonCenter = center.map((v, i) => v + offset[i]) as Vector3, moonRadius = radius * moon.size;
+                const moonRect = new DOMRect(moonCenter[0] - moonRadius, -moonCenter[1] - moonRadius, moonRadius * 2, moonRadius * 2);
+                const toSun = shadowSun ? shadowSun.center.map((v, i) => v - moonCenter[i]) as Vector3 : entry.light!;
+                const distance = Math.max(1, Math.hypot(...toSun));
+                const exposure = Math.max(0, Math.min(1, (moonRect.right - clip.left) / (2 * moonRadius), (clip.right - moonRect.left) / (2 * moonRadius),
+                    (moonRect.bottom - clip.top) / (2 * moonRadius), (clip.bottom - moonRect.top) / (2 * moonRadius)));
+                const sunDistance = solarRect ? Math.hypot((moonCenter[0] - solarRect.left - solarRect.width / 2) / (solarRect.width / 2),
+                    (-moonCenter[1] - solarRect.top - solarRect.height / 2) / (solarRect.height / 2)) : 2;
+                bodies.push({
+                    id: `${entry.orbitId}:moon:${index}`, parent: entry, material, rect: moonRect,
+                    center: moonCenter, depth: moonCenter[2],
+                    rotation: { direction: moon.direction, phase: moon.phase, periodSeconds: moon.period },
+                    light: toSun.map(v => v / distance) as Vector3,
+                    phase: {
+                        solarAngularRadius: (shadowSun?.radius ?? 0) / distance,
+                        transit: moonCenter[2] >= 0 && sunDistance < 1 ? 1 : 0,
+                    },
+                    moon: true, opacity: exposure * exposure * (3 - 2 * exposure), tint: moon.tint, shape: moon.shape,
+                });
             }
         }
-        const spheres = [...shadowSpheres.values()];
-        for (const entry of planetDrawOrder) {
-            const rect = entry.rect!;
+        const spheres: ShadowSphere[] = bodies.map(body => ({ id: body.id, center: body.center, radius: body.rect.width / 2, opacity: body.opacity }));
+        const layers = systemDepthLayers([...this.entries].map(entry => ({
+            id: entry.orbitId!, depth: this.orbits.get(entry.orbitId)?.depth ?? 0,
+            extent: entry.rect!.width / 2 * (!this.orbits.isCompact() && this.systemsEnabled ? entry.system.extent : 1),
+        })));
+        const systemDepthRange = Math.max(depthRange, layers.range);
+        const renderDepthOf = (body: SphereFrame) => layers.centers.get(body.parent.orbitId!)!
+            + body.depth - (this.orbits.get(body.parent.orbitId)?.depth ?? 0);
+        for (const ring of ringFrames) ring.drawDepth = layers.centers.get(ring.id)!;
+        if (ringFrames.length && !this.rings && !this.ringsFailed) {
+            try { this.rings = new PlanetRings(gl); } catch (error) { this.ringsFailed = true; console.warn('Ring rendering unavailable', error); }
+        }
+        gl.useProgram(this.program); gl.bindBuffer(gl.ARRAY_BUFFER, this.sphereBuffer);
+        gl.vertexAttribPointer(this.pointAttribute, 2, gl.FLOAT, false, 0, 0);
+        gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
+        for (const body of bodies.sort((a, b) => renderDepthOf(a) - renderDepthOf(b))) {
+            const { rect, material } = body;
             if (!rect.width || rect.bottom <= clip.top || rect.top >= clip.bottom || rect.right <= clip.left || rect.left >= clip.right) continue;
-            if (!entry.texture && !entry.loadToken && !entry.failed) {
-                const map = generatePlanetMap(entry.options);
+            if (!material.texture && !material.loadToken && !material.failed) {
+                const map = generatePlanetMap(material.options);
                 if (map instanceof Promise) {
-                    const token = {};
-                    entry.loadToken = token;
+                    const token = {}; material.loadToken = token;
                     void map.then(loaded => {
-                        if (!this.entries.has(entry) || entry.loadToken !== token || this.gl !== gl) return;
-                        this.upload(entry, loaded);
-                        this.invalidate();
-                    }, () => { entry.failed = true; this.invalidate(); });
-                } else this.upload(entry, map);
+                        if (!this.entries.has(body.parent) || material.loadToken !== token || this.gl !== gl) return;
+                        this.upload(material, loaded); this.invalidate();
+                    }, () => { material.failed = true; this.invalidate(); });
+                } else this.upload(material, map);
             }
-            if (!entry.texture) { if (!entry.failed) pending = true; continue; }
-            gl.bindTexture(gl.TEXTURE_2D, entry.texture);
-            const { rotation } = entry;
-            const phase = rotation.phase + rotation.direction * this.clock.current / (rotation.periodSeconds * 1000) * Math.PI * 2;
-            gl.uniform4f(uniforms.rect, rect.left - bounds.left + rect.width / 2, bounds.height - (rect.top - bounds.top + rect.height / 2), rect.width, rect.height);
-            gl.uniform1f(uniforms.phase, phase % (Math.PI * 2));
-            gl.uniform3fv(uniforms.light, entry.light!);
-            gl.uniform1f(uniforms.relief, entry.options.type === "terrestrial" ? 0.05 : 0);
-            gl.uniform1f(uniforms.edge, 3 / rect.width);
-            gl.uniform1f(uniforms.equalArea, entry.map?.equalArea ? 1 : 0);
-            gl.uniform1f(uniforms.axisTilt, entry.map?.axisTilt ?? 0);
-            const orbit = this.orbits.get(entry.orbitId);
-            const lighting = getPlanetPhaseLighting(entry.lighting, orbit);
-            gl.uniform1f(uniforms.fill, lighting.fill);
-            gl.uniform1f(uniforms.terminatorStart, lighting.terminatorStart);
-            const receiver = shadowSpheres.get(entry);
-            const casters = receiver && shadowSun ? getPlanetShadowCasters(receiver, spheres, shadowSun) : [];
+            if (!material.texture) { if (!material.failed) pending = true; continue; }
+            if (body.moon && !this.moonBuffer) {
+                const mesh = createMoonGrid();
+                this.moonBuffer = gl.createBuffer();
+                if (!this.moonBuffer) continue;
+                this.moonVertexCount = mesh.length / 2;
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.moonBuffer); gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
+            }
+            gl.bindBuffer(gl.ARRAY_BUFFER, body.moon ? this.moonBuffer : this.sphereBuffer);
+            gl.vertexAttribPointer(this.pointAttribute, 2, gl.FLOAT, false, 0, 0);
+            gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, material.texture);
+            const rotation = body.rotation, time = body.moon ? body.parent.satelliteTime : this.clock.current;
+            const phase = rotation.phase + rotation.direction * time / (rotation.periodSeconds * 1000) * Math.PI * 2;
+            gl.uniform4f(uniforms.rect, rect.left - bounds.left + rect.width / 2, bounds.bottom - rect.top - rect.height / 2, rect.width, rect.height);
+            // Rigid moon discs avoid intersecting each other, while real positions still drive shadows.
+            gl.uniform3f(uniforms.depth, renderDepthOf(body),
+                body.moon ? 0 : rect.width / 2, systemDepthRange);
+            gl.uniform1f(uniforms.phase, phase % (Math.PI * 2)); gl.uniform3fv(uniforms.light, body.light);
+            gl.uniform3fv(uniforms.tint, body.tint);
+            gl.uniform1f(uniforms.moon, body.moon ? 1 : 0);
+            if (body.shape) {
+                gl.uniform3fv(uniforms.moonAxes, body.shape.axes);
+                gl.uniform4fv(uniforms.moonLobes, body.shape.lobes);
+            }
+            gl.uniform1f(uniforms.relief, material.options.type === 'terrestrial' ? .05 : 0);
+            gl.uniform1f(uniforms.edge, body.moon ? Math.min(.25, 2 / rect.width) : 3 / rect.width);
+            gl.uniform1f(uniforms.equalArea, material.map?.equalArea ? 1 : 0); gl.uniform1f(uniforms.axisTilt, body.shape?.tilt ?? material.map?.axisTilt ?? 0);
+            const profile = body.moon ? { ...body.parent.lighting, fill: Math.min(.28, body.parent.lighting.fill) } : material.lighting;
+            const lighting = getPlanetPhaseLighting(profile, body.phase);
+            gl.uniform1f(uniforms.fill, lighting.fill); gl.uniform1f(uniforms.terminatorStart, lighting.terminatorStart);
+            const receiver = spheres.find(s => s.id === body.id)!;
+            // A parent's eclipse remains physical even when that parent is just outside the viewport.
+            const sources = body.moon ? spheres.map(s => s.id === body.parent.orbitId ? { ...s, opacity: 1 } : s) : spheres;
+            const casters = this.shadowsEnabled && shadowSun ? getPlanetShadowCasters(receiver, sources, shadowSun) : [];
             gl.uniform1i(uniforms.shadowCount, casters.length);
-            if (receiver && shadowSun && casters.length) {
-                casters.forEach(({ sphere, opacity }, index) => {
-                    this.shadowCasters.set([...sphere.center.map((v, i) => v - receiver.center[i]), sphere.radius], index * 4);
-                    this.shadowFades[index] = opacity;
-                });
-                gl.uniform4fv(uniforms.shadowCasters, this.shadowCasters);
-                gl.uniform1fv(uniforms.shadowFades, this.shadowFades);
-                gl.uniform4f(uniforms.shadowSun, shadowSun.center[0] - receiver.center[0],
-                    shadowSun.center[1] - receiver.center[1], shadowSun.center[2] - receiver.center[2], shadowSun.radius);
-                gl.uniform1f(uniforms.shadowRadius, receiver.radius);
+            gl.uniform1f(uniforms.shadowRadius, receiver.radius);
+            if (shadowSun) gl.uniform4f(uniforms.shadowSun, ...shadowSun.center.map((v, i) => v - receiver.center[i]) as Vector3, shadowSun.radius);
+            if (casters.length) {
+                casters.forEach(({ sphere, opacity }, index) => { this.shadowCasters.set([...sphere.center.map((v, i) => v - receiver.center[i]), sphere.radius], index * 4); this.shadowFades[index] = opacity; });
+                gl.uniform4fv(uniforms.shadowCasters, this.shadowCasters); gl.uniform1fv(uniforms.shadowFades, this.shadowFades);
             }
-            const profiles = entry.map?.storms;
+            const ownRing = ringFrames.find(r => r.id === body.parent.orbitId);
+            gl.uniform1f(uniforms.ringEnabled, this.shadowsEnabled && this.rings && ownRing ? 1 : 0);
+            if (ownRing && this.rings) {
+                gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.rings.texture(ownRing.profile));
+                gl.activeTexture(gl.TEXTURE0);
+                const basis = systemBasis(ownRing.angle, ownRing.profile.opening);
+                gl.uniform4f(uniforms.ringParent, ...ownRing.center.map((v, i) => v - receiver.center[i]) as Vector3, ownRing.radius);
+                gl.uniform3fv(uniforms.ringMajor, basis.major); gl.uniform3fv(uniforms.ringMinor, basis.minor);
+                gl.uniform3f(uniforms.ringLimits, ownRing.profile.inner, ownRing.profile.outer, ownRing.profile.opacity);
+            }
+            const profiles = material.map?.storms;
             gl.uniform1f(uniforms.stormsEnabled, profiles?.length ? 1 : 0);
             if (profiles?.length) {
-                const activity = getGiantStormActivity(entry.options.seed, profiles, this.clock.current);
-                gl.uniform4fv(uniforms.storms, activity.geometry);
-                gl.uniform4fv(uniforms.stormMotion, activity.motion);
-                gl.uniform3fv(uniforms.stormPale, entry.stormPalette.pale);
-                gl.uniform3fv(uniforms.stormDark, entry.stormPalette.dark);
+                const activity = getGiantStormActivity(material.options.seed, profiles, this.clock.current);
+                gl.uniform4fv(uniforms.storms, activity.geometry); gl.uniform4fv(uniforms.stormMotion, activity.motion);
+                gl.uniform3fv(uniforms.stormPale, material.stormPalette.pale); gl.uniform3fv(uniforms.stormDark, material.stormPalette.dark);
             }
-            gl.uniform1f(uniforms.behind, orbit?.back ? 1 : 0);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
-            if (!entry.element.hasAttribute("data-projected")) entry.element.setAttribute("data-projected", "");
+            gl.uniform1f(uniforms.behind, body.depth < 0 ? 1 : 0);
+            gl.drawArrays(gl.TRIANGLES, 0, body.moon ? this.moonVertexCount : this.sphereVertexCount);
+            if (!body.moon && !body.parent.element.hasAttribute('data-projected')) body.parent.element.setAttribute('data-projected', '');
             visible++;
         }
+        // Transparent annuli test against curved sphere depths without hiding geometry behind their gaps.
+        if (this.rings && shadowSun && solarRect) {
+            gl.depthMask(false);
+            this.rings.draw(ringFrames, bounds, systemDepthRange, shadowSun, solarRect, spheres, this.shadowsEnabled);
+            gl.depthMask(true); gl.useProgram(this.program); gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
+            gl.enableVertexAttribArray(this.pointAttribute); gl.vertexAttribPointer(this.pointAttribute, 2, gl.FLOAT, false, 0, 0);
+        }
+        gl.disable(gl.DEPTH_TEST);
         this.dirty = false;
         if (!pending) this.markReady();
         if (running && (visible || this.orbits.hasMotion() || this.twinkleStars.length)) this.frame = requestAnimationFrame(this.render);

@@ -6,6 +6,7 @@ export type PlanetTextureOptions = {
     type: "terrestrial" | "giant";
     intense: boolean;
     seed: string | number;
+    detail?: "moon";
 };
 
 type Random = () => number;

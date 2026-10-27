@@ -113,10 +113,11 @@ export function generateStarfield(width: number, height: number, seed: number, m
 }
 
 /** Cached base remains complete for paused/reduced-motion rendering and WebGL fallback. */
-export function drawStarfield(context: CanvasRenderingContext2D, width: number, height: number, seed: number, maxClusterDiameter = 36) {
+export function drawStarfield(context: CanvasRenderingContext2D, width: number, height: number, seed: number, maxClusterDiameter = 36, background?: () => void) {
     const twinkles: TwinkleStar[] = [];
     context.fillStyle = "#000";
     context.fillRect(0, 0, width, height);
+    background?.();
     for (const star of generateStarfield(width, height, seed, maxClusterDiameter)) {
         const { x, y, radius, opacity } = star;
         const color = star.color.map(c => Math.round(c * 255)).join(", ");
