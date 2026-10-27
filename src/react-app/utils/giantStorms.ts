@@ -82,20 +82,31 @@ uniform vec4 u_stormMotion[${giantStormCount}];
 uniform vec3 u_stormPale;
 uniform vec3 u_stormDark;
 
+vec2 stormPoint(vec2 uv, vec4 storm, vec4 motion) {
+    float growth = 0.65 + 0.35 * sqrt(motion.x);
+    vec2 delta = vec2(fract(uv.x - storm.x + 0.5) - 0.5, uv.y - storm.y);
+    float c = cos(motion.z), s = sin(motion.z);
+    return mat2(c, -s, s, c) * (delta / (storm.zw * growth));
+}
+
 vec2 giantFlow(vec2 uv) {
     if (u_stormsEnabled < 0.5) return uv;
     vec2 result = uv;
     for (int i = 0; i < ${giantStormCount}; i++) {
         vec4 storm = u_storms[i], motion = u_stormMotion[i];
         if (motion.x <= 0.0) continue;
-        vec2 delta = vec2(fract(uv.x - storm.x + 0.5) - 0.5, uv.y - storm.y);
-        vec2 q = delta / storm.zw;
+        vec2 q = stormPoint(uv, storm, motion);
         float radius = length(q);
         if (radius >= 2.5) continue;
-        // A compact circulation field bends nearby bands and fades to an unchanged atmosphere.
-        float bend = motion.w * motion.x * 0.24 * (1.0 - smoothstep(0.35, 2.5, radius));
+        // Use the same growing, tilted circulation region as the visible cloud system.
+        // Nearby belts curve around its body; the rest of the original material stays untouched.
+        float envelope = 1.0 - smoothstep(0.35, 2.5, radius);
+        float bend = motion.w * motion.x * 0.23 * envelope;
         float c = cos(bend), s = sin(bend);
-        result += (mat2(c, -s, s, c) * q - q) * storm.zw;
+        vec2 flow = mat2(c, -s, s, c) * q;
+        flow *= 1.0 + 0.04 * motion.x * (1.0 - smoothstep(0.35, 1.6, radius));
+        c = cos(motion.z); s = sin(motion.z);
+        result += mat2(c, s, -s, c) * (flow - q) * storm.zw * (0.65 + 0.35 * sqrt(motion.x));
     }
     return result;
 }
@@ -106,28 +117,41 @@ vec3 giantWeather(vec3 color, vec2 uv) {
         vec4 storm = u_storms[i], motion = u_stormMotion[i];
         float life = motion.x;
         if (life <= 0.0) continue;
-        float growth = 0.65 + 0.35 * sqrt(life);
-        vec2 delta = vec2(fract(uv.x - storm.x + 0.5) - 0.5, uv.y - storm.y);
-        vec2 q = delta / (storm.zw * growth);
-        float c = cos(motion.z), s = sin(motion.z);
-        q = mat2(c, -s, s, c) * q;
+        vec2 q = stormPoint(uv, storm, motion);
         float radius = length(q);
-        if (radius >= 2.2) continue;
-        float angle = atan(q.y, q.x) - motion.y;
-        // Establish a coherent oval cloud mass before adding circulation around its edge.
-        // Moving broad cloud variations give the filled body readable internal circulation.
-        float body = 1.0 - smoothstep(0.8, 1.15, radius);
-        float interior = 0.3 + 0.06 * (1.0 - smoothstep(0.0, 1.1, radius))
-            + 0.18 * sin(angle + radius * 3.0);
-        color = mix(color, mix(u_stormDark, u_stormPale, interior), body * life * 0.72);
-        // One asymmetric, soft cloud arm crosses the outer body and trails into the atmosphere.
-        // A broad feature is readable at scene size without replacing the oval with tight rings.
-        float flow = angle + radius * 2.7 + 0.22 * sin(angle * 2.0 + radius * 1.5 + motion.z * 7.0);
-        float cloud = smoothstep(0.5, 0.95, 0.5 + 0.5 * sin(flow));
-        float tail = smoothstep(0.4, 0.85, radius) * (1.0 - smoothstep(1.25, 2.2, radius));
-        float wisps = 0.55 + 0.45 * sin(angle + radius * 0.4 + motion.z * 7.0);
-        vec3 cloudColor = mix(u_stormPale, vec3(1.0), 0.4);
-        color = mix(color, cloudColor, tail * cloud * wisps * life * smoothstep(0.12, 0.8, life) * 0.7);
+        if (radius >= 3.4) continue;
+        float angle = atan(q.y, q.x + 0.00001);
+        float circulation = angle - motion.y;
+        float eddies = 0.30 * sin(circulation * 3.0 + radius * 2.2)
+            + 0.12 * sin(circulation * 5.0 - radius * 1.6 + motion.z * 7.0);
+        float spiral = circulation + radius * 4.5 + eddies;
+        float cloud = smoothstep(0.20, 0.85, 0.5 + 0.5 * sin(spiral));
+        float crest = smoothstep(0.84, 0.99, 0.5 + 0.5 * sin(spiral + 0.16));
+
+        // Borrow adjoining belt colors to tie the storm into its local atmosphere.
+        vec3 atmosphere = 0.5 * (texture2D(u_map, vec2(storm.x, storm.y - storm.w * 0.9)).rgb
+            + texture2D(u_map, vec2(storm.x, storm.y + storm.w * 0.9)).rgb);
+        vec3 pale = mix(atmosphere, u_stormPale, 0.72);
+        vec3 dark = mix(atmosphere, u_stormDark, 0.68);
+        float body = 1.0 - smoothstep(0.72, 1.20, radius);
+        float interior = 0.20 + 0.12 * (1.0 - smoothstep(0.12, 0.95, radius))
+            + 0.22 * cloud * smoothstep(0.12, 0.55, radius);
+        color = mix(color, mix(dark, pale, interior), body * life * 0.90);
+
+        // A broad, softly layered arm feeds out of the oval, with a restrained bright crest.
+        float tail = smoothstep(0.32, 0.75, radius) * (1.0 - smoothstep(1.25, 2.5, radius));
+        float density = 0.72 + 0.28 * sin(circulation + radius * 0.45 + motion.z * 7.0);
+        float wallRadius = radius + eddies * 0.15;
+        float wall = smoothstep(0.42, 0.68, wallRadius) * (1.0 - smoothstep(0.98, 1.30, wallRadius));
+        float clouds = (tail * (cloud * 0.38 + crest * 0.15) + wall * (0.12 + cloud * 0.23)) * density;
+        color = mix(color, pale + vec3(0.045), clouds * life * smoothstep(0.08, 0.65, life));
+
+        // Faint opposite-side streamers follow the belts, joining the storm to its atmosphere.
+        float x = abs(q.x);
+        float wakeY = motion.w * sign(q.x) * (0.58 + 0.10 * sin(x * 1.4 - motion.y * 0.35));
+        float wake = (1.0 - smoothstep(0.08, 0.36, abs(q.y - wakeY)))
+            * smoothstep(0.95, 1.6, x) * (1.0 - smoothstep(2.0, 3.2, x));
+        color = mix(color, pale, wake * life * 0.13);
     }
     return color;
 }`;

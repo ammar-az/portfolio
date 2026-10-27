@@ -30,7 +30,7 @@ function App() {
 						<Simple onSpaceMode={() => changeMode(false)}/>
 					) :  (
 						<Space textureRevision={textureRevision} onReroll={() => setTextureRevision(revision => revision + 1)}
-							motionEnabled={motionEnabled} onMotionChange={setMotionEnabled}
+							motionEnabled={motionEnabled}
 							convectionEnabled={convectionEnabled} onConvectionChange={setConvectionEnabled} onReady={onSpaceReady}
 							starfieldRevision={starfieldRevision} onStarfieldReroll={() => setStarfieldRevision(revision => revision + 1)}
 							starAppearance={starAppearance} onStarAppearanceChange={setStarAppearance}/>

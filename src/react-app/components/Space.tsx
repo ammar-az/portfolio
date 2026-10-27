@@ -14,8 +14,6 @@ import StarPalettePicker from "./space/StarPalettePicker";
 import Starfield from "./space/Starfield";
 import { PlanetProjectionCanvas, usePlanetProjection } from "./space/PlanetProjection";
 import OrbitResetControl from "./space/OrbitResetControl";
-import SceneMotionControl from "./space/SceneMotionControl";
-import OrbitSpeedControl from "./space/OrbitSpeedControl";
 import SolarPerformanceControl from "./space/SolarPerformanceControl";
 import SpaceOrbits from "./space/SpaceOrbits";
 import { starPalettes } from "../data/starAppearance";
@@ -36,7 +34,6 @@ const orbits = [
 
 type SpaceProps = {
     motionEnabled: boolean;
-    onMotionChange: (enabled: boolean) => void;
     convectionEnabled: boolean;
     onConvectionChange: (enabled: boolean) => void;
     onReady: () => void;
@@ -68,7 +65,7 @@ function revealBody(viewport: HTMLElement | null, body: HTMLElement) {
 }
 
 export default function Space({ textureRevision, onReroll, starfieldRevision, onStarfieldReroll, starAppearance, onStarAppearanceChange,
-    motionEnabled, onMotionChange, convectionEnabled, onConvectionChange, onReady }: SpaceProps) {
+    motionEnabled, convectionEnabled, onConvectionChange, onReady }: SpaceProps) {
     const [activeProject, setActiveProject] = useState<Project | null>(null);
     const [backgroundCatalogue, setBackgroundCatalogue] = useState<DeepSkyImage[]>([]);
     const projection = usePlanetProjection();
@@ -224,6 +221,11 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
         }
     }, [desktop, width, height, sceneSize.systemWidth, sceneSize.systemHeight, sceneSize.height, sceneSize.headerBottom, activeProject]);
 
+    const starfieldControl = <button type="button" className="icon-button space-starfield-reroll" onClick={onStarfieldReroll}
+        aria-label="Reroll starfield" title="Reroll starfield">
+        <StarsIcon aria-hidden="true" focusable="false" />
+    </button>;
+
     return (
         <main ref={sceneRef} className={`space-scene${desktop ? "" : " space-scene-mobile"}`} aria-label="Space Mode project system" style={{
             "--space-header-bottom": sceneSize.headerBottom ? `${sceneSize.headerBottom}px` : undefined,
@@ -232,22 +234,20 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
         } as CSSProperties}>
             <div ref={stableHeightRef} className="space-stable-height" aria-hidden="true" />
             <div className="space-controls">
-                <SolarPerformanceControl enabled={convectionEnabled} motionEnabled={motionEnabled} onChange={onConvectionChange} />
-                <StarPalettePicker value={starAppearance} onChange={onStarAppearanceChange} />
-                <span className="space-mobile-motion">
-                    <SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} />
-                    <OrbitSpeedControl />
-                </span>
-                <OrbitResetControl />
-                <button type="button" className="icon-button space-reroll" onClick={onReroll}
-                    aria-label="Reroll planet textures" title="Reroll planet textures">
-                    <RefreshIcon aria-hidden="true" focusable="false" />
-                </button>
-                {desktop && <PlanetaryOrbitersControl />}
-                <button type="button" className="icon-button space-starfield-reroll" onClick={onStarfieldReroll}
-                    aria-label="Reroll starfield" title="Reroll starfield">
-                    <StarsIcon aria-hidden="true" focusable="false" />
-                </button>
+                <div className="space-star-controls">
+                    <SolarPerformanceControl enabled={convectionEnabled} motionEnabled={motionEnabled} onChange={onConvectionChange} />
+                    <StarPalettePicker value={starAppearance} onChange={onStarAppearanceChange} />
+                </div>
+                {!desktop && starfieldControl}
+                <div className="space-planet-controls">
+                    <OrbitResetControl />
+                    <button type="button" className="icon-button space-reroll" onClick={onReroll}
+                        aria-label="Reroll planet textures" title="Reroll planet textures">
+                        <RefreshIcon aria-hidden="true" focusable="false" />
+                    </button>
+                    {desktop && <PlanetaryOrbitersControl />}
+                </div>
+                {desktop && starfieldControl}
                 <span className="space-status" role="status">
                     {textureRevision > 0 ? `Planet textures regenerated ${textureRevision} ${textureRevision === 1 ? "time" : "times"}.` : ""}
                 </span>

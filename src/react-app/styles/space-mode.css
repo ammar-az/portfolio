@@ -6,6 +6,7 @@
     background: #000;
 }
 
+
 .portfolio-app-space > .header {
     position: fixed;
     top: 0;
@@ -166,10 +167,6 @@
     background: linear-gradient(180deg, #1014198c, #10141966);
 }
 
-.space-mobile-motion > .icon-button {
-    background: linear-gradient(180deg, #1014198c, #10141966);
-}
-
 .space-controls .icon-button:hover {
     background: linear-gradient(180deg, #10141999, #10141980);
 }
@@ -193,8 +190,9 @@
     cursor: default;
 }
 
-.space-mobile-motion {
-    display: none;
+.space-star-controls,
+.space-planet-controls {
+    display: contents;
 }
 
 .space-palette-picker {
@@ -647,21 +645,37 @@
         top: calc(var(--space-header-bottom, 4rem) + 0.75rem);
         left: max(1rem, env(safe-area-inset-left));
         right: max(1rem, env(safe-area-inset-right));
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: clamp(0.25rem, 1.2vw, 0.75rem);
-        align-items: flex-start;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: clamp(0.75rem, 3vw, 1.5rem);
+        align-items: start;
+    }
+
+    .space-scene-mobile :is(.space-star-controls, .space-planet-controls) {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        grid-row: 1;
+    }
+
+    .space-scene-mobile .space-star-controls {
+        grid-column: 1;
+        justify-self: start;
+    }
+
+    .space-scene-mobile .space-starfield-reroll {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .space-scene-mobile .space-planet-controls {
+        grid-column: 3;
+        justify-self: end;
     }
 
     .space-scene-mobile .space-palette-picker {
         position: static;
         margin-right: 0;
-    }
-
-    .space-scene-mobile .space-mobile-motion {
-        display: inline-flex;
-        gap: clamp(0.25rem, 1.2vw, 0.75rem);
     }
 
     .space-scene-mobile .space-palette-panel {
@@ -729,5 +743,12 @@
         transform: translateX(-50%);
         text-align: center;
         text-shadow: 0 1px 5px #000;
+    }
+}
+
+@media (max-width: 22.499rem) {
+    .portfolio-app-space > .header {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
     }
 }

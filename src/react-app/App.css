@@ -379,6 +379,7 @@
 }
 
 .mobile-menu-toggle,
+.header-mobile-actions,
 .mobile-link-label {
     display: none;
 }
@@ -515,6 +516,19 @@
 
     .mobile-menu-toggle {
         display: inline-flex;
+    }
+
+    .header-mobile-actions,
+    .header-mobile-motion {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex-shrink: 0;
+    }
+
+    .header-mobile-motion .scene-motion > svg {
+        width: 1.625rem;
+        height: 1.625rem;
     }
 
     .mobile-menu-toggle svg {

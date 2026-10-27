@@ -80,9 +80,15 @@ export default function Header({ simple = true, onModeChange, motionEnabled = tr
                 <nav className="header-nav" aria-label="Main navigation">
                     {navigation}
                 </nav>
-                <button type="button" className="icon-button mobile-menu-toggle" aria-label="Open navigation menu" aria-haspopup="dialog" aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => { menu.open(); setMenuOpen(true); }}>
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-                </button>
+                <div className="header-mobile-actions">
+                    {!simple && onMotionChange && <span className="header-mobile-motion">
+                        <SceneMotionControl enabled={motionEnabled} onChange={onMotionChange} />
+                        <OrbitSpeedControl />
+                    </span>}
+                    <button type="button" className="icon-button mobile-menu-toggle" aria-label="Open navigation menu" aria-haspopup="dialog" aria-expanded={menuOpen} aria-controls="mobile-menu" onClick={() => { menu.open(); setMenuOpen(true); }}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                </div>
             </header>
             <dialog ref={menu.dialogRef} id="mobile-menu" className="mobile-menu" aria-labelledby="mobile-menu-title" onCancel={event => { event.preventDefault(); closeMenu(); }} onClose={() => { if (!menu.dialogRef.current?.open) { menu.restore(); setMenuOpen(false); } }}>
                 <div className="mobile-menu-heading">
