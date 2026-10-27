@@ -1,5 +1,9 @@
 export type Point = { x: number; y: number };
 
+export function hasFiniteSize(size: { width: number; height: number }) {
+    return Number.isFinite(size.width) && size.width > 0 && Number.isFinite(size.height) && size.height > 0;
+}
+
 export type Orbit = {
     center: Point;
     radiusX: number;
@@ -18,6 +22,14 @@ export function getOrbitPoint(orbit: Orbit, phase: number): Point {
         x: orbit.center.x + x * Math.cos(tilt) - y * Math.sin(tilt),
         y: orbit.center.y + x * Math.sin(tilt) + y * Math.cos(tilt),
     };
+}
+
+/** Camera-facing depth in CSS pixels, on the same near/far halves as the projected orbit. */
+export function getOrbitDepth(orbit: Orbit, phase: number, scale: Point, depthScale: number) {
+    const tilt = orbit.tilt * Math.PI / 180;
+    const major = Math.hypot(orbit.radiusX * Math.cos(tilt) * scale.x, orbit.radiusX * Math.sin(tilt) * scale.y);
+    const minor = Math.hypot(orbit.radiusY * Math.sin(tilt) * scale.x, orbit.radiusY * Math.cos(tilt) * scale.y);
+    return Math.sin(phase * Math.PI / 180) * Math.max(major, minor) * depthScale;
 }
 
 /** Upper intersection with a vertical line, including inclined ellipses. */

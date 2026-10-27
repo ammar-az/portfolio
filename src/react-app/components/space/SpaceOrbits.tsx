@@ -1,9 +1,10 @@
 import { useId, useMemo } from "react";
 import type { CSSProperties } from "react";
-import { getOrbitCrossings, getOrbitPoint } from "../../utils/spaceGeometry";
+import { getOrbitCrossings, getOrbitDepth, getOrbitPoint } from "../../utils/spaceGeometry";
 import type { Orbit, Point } from "../../utils/spaceGeometry";
+import { spaceScene } from "../../data/spaceScene";
 
-type OrbitalPath = Orbit & { id: string; position: Point; diameter: number };
+type OrbitalPath = Orbit & { id: string; position: Point; diameter: number; phase: number };
 type Props = {
     bodies: OrbitalPath[]; width: number; height: number; desktop: boolean;
     viewport: { width: number; height: number };
@@ -14,20 +15,23 @@ export default function SpaceOrbits({ bodies, width, height, desktop, viewport, 
     const id = useId();
     const depthId = `${id}-depth`, fadeId = `${id}-crossing-fade`;
     const solarClipId = `${id}-sun`, transitMaskId = `${id}-planets`;
+    const scaleX = viewport.width / width, scaleY = desktop ? viewport.height / height : 1;
+    const depthScale = desktop ? spaceScene.lighting.phaseDepth.desktop : spaceScene.lighting.phaseDepth.mobile;
     const gaps = useMemo(() => {
         const result = new Map<string, { point: Point; radius: number; over: string }[]>();
         if (bodies.length < 2) return result;
         const outer = bodies[bodies.length - 1];
         const tangent = (orbit: Orbit, phase: number) => {
             const a = getOrbitPoint(orbit, phase - 0.01), b = getOrbitPoint(orbit, phase + 0.01);
-            const x = (b.x - a.x) * viewport.width / width, y = (b.y - a.y) * viewport.height / height;
+            const x = (b.x - a.x) * scaleX, y = (b.y - a.y) * scaleY;
             const length = Math.hypot(x, y);
             return { x: x / length, y: y / length };
         };
         for (const inner of bodies.slice(0, -1)) {
             for (const crossing of getOrbitCrossings(outer, inner)) {
-                // The outer inclined plane crosses above on its near half, below on its far half.
-                const outerOver = Math.sin(crossing.firstPhase * Math.PI / 180) >= 0;
+                // Use the same virtual depth as the discs, illumination and native hit order.
+                const outerOver = getOrbitDepth(outer, crossing.firstPhase, { x: scaleX, y: scaleY }, depthScale)
+                    > getOrbitDepth(inner, crossing.secondPhase, { x: scaleX, y: scaleY }, depthScale);
                 const under = outerOver ? inner.id : outer.id, over = outerOver ? outer.id : inner.id;
                 const a = tangent(outer, crossing.firstPhase), b = tangent(inner, crossing.secondPhase);
                 const radius = Math.min(10, Math.max(4, 1.4 / Math.max(0.12, Math.abs(a.x * b.y - a.y * b.x))));
@@ -35,7 +39,7 @@ export default function SpaceOrbits({ bodies, width, height, desktop, viewport, 
             }
         }
         return result;
-    }, [bodies, width, height, viewport.width, viewport.height]);
+    }, [bodies, scaleX, scaleY, depthScale]);
     const line = (body: OrbitalPath, index: number, front: boolean) => {
         const start = getOrbitPoint(body, 0), end = getOrbitPoint(body, 180);
         const d = `M${start.x} ${start.y}A${body.radiusX} ${body.radiusY} ${body.tilt} 0 1 ${end.x} ${end.y}`;
@@ -44,7 +48,7 @@ export default function SpaceOrbits({ bodies, width, height, desktop, viewport, 
                 transform={`rotate(${body.tilt} ${body.center.x} ${body.center.y})`} />;
         return <g key={body.id} className="space-orbit" data-orbit-line={body.id}
             mask={gaps.has(body.id) ? `url(#${id}-gap-${index})` : undefined}>
-            {shape("space-orbit-halo")}{shape("space-orbit-core")}
+            {shape("space-orbit-halo")}{shape("space-orbit-soft")}{shape("space-orbit-core")}
         </g>;
     };
     return <>
@@ -64,7 +68,7 @@ export default function SpaceOrbits({ bodies, width, height, desktop, viewport, 
                     <rect width={width} height={height} fill="white" stroke="none" />
                     {gaps.get(body.id)!.map((gap, gapIndex) => <ellipse key={gapIndex} data-orbit-crossing={body.id}
                         data-over-orbit={gap.over} cx={gap.point.x} cy={gap.point.y}
-                        rx={gap.radius * width / viewport.width} ry={gap.radius * height / viewport.height}
+                        rx={gap.radius / scaleX} ry={gap.radius / scaleY}
                         fill={`url(#${fadeId})`} stroke="none" />)}
                 </mask>)}
             </defs>
@@ -81,7 +85,7 @@ export default function SpaceOrbits({ bodies, width, height, desktop, viewport, 
                     <rect width={width} height={height} fill="white" stroke="none" />
                     {bodies.map(body => <ellipse key={body.id} data-orbit-mask={body.id} cx={body.position.x} cy={body.position.y}
                         rx={body.diameter * width / viewport.width / 2 + 1} ry={body.diameter * height / viewport.height / 2 + 1}
-                        fill="black" stroke="none" />)}
+                        fill="black" stroke="none" visibility={Math.sin(body.phase * Math.PI / 180) < 0 ? "hidden" : "visible"} />)}
                 </mask>
             </defs>
             <g clipPath={`url(#${solarClipId})`} mask={`url(#${transitMaskId})`}>

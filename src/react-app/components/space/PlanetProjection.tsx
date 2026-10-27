@@ -6,6 +6,8 @@ const ProjectionContext = createContext<{
     renderer: PlanetRenderer;
     available: boolean | null;
     reduced: boolean;
+    orbitSpeed: 1 | 2 | 4;
+    setOrbitSpeed: (speed: 1 | 2 | 4) => void;
     setAvailable: (available: boolean) => void;
 } | null>(null);
 
@@ -16,6 +18,7 @@ export function PlanetProjectionProvider({ children, enabled, convectionEnabled,
 }) {
     const renderer = useMemo(() => new PlanetRenderer(clock), [clock]);
     const [available, setAvailable] = useState<boolean | null>(null);
+    const [orbitSpeed, setOrbitSpeed] = useState<1 | 2 | 4>(1);
     const [reduced, setReduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
     useEffect(() => {
         const preference = matchMedia("(prefers-reduced-motion: reduce)");
@@ -25,7 +28,9 @@ export function PlanetProjectionProvider({ children, enabled, convectionEnabled,
     }, []);
     useEffect(() => renderer.setEnabled(enabled && !reduced), [renderer, enabled, reduced]);
     useLayoutEffect(() => renderer.setConvectionEnabled(convectionEnabled && !reduced), [renderer, convectionEnabled, reduced]);
-    const value = useMemo(() => ({ renderer, available, reduced, setAvailable }), [renderer, available, reduced]);
+    useLayoutEffect(() => renderer.orbits.setSpeed(orbitSpeed), [renderer, orbitSpeed]);
+    const value = useMemo(() => ({ renderer, available, reduced, orbitSpeed, setOrbitSpeed, setAvailable }),
+        [renderer, available, reduced, orbitSpeed]);
     return <ProjectionContext.Provider value={value}>{children}</ProjectionContext.Provider>;
 }
 

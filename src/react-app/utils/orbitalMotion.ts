@@ -1,6 +1,7 @@
-import { getOrbitPoint, getUpperOrbitPoint } from "./spaceGeometry";
+import { getOrbitDepth, getOrbitPoint, getUpperOrbitPoint, hasFiniteSize } from "./spaceGeometry";
 import type { Orbit, Point } from "./spaceGeometry";
 import { seededRandom } from "./seededRandom";
+import { spaceScene } from "../data/spaceScene";
 
 type Segment = { start: number; end: number; span: number; offset: number };
 export type OrbitalBody = {
@@ -17,6 +18,8 @@ type Track = OrbitalBody & {
     segments: Segment[]; span: number; progress: number; startProgress: number; period: number;
     x: number; y: number; angle: number; lightRotation: number;
     back: boolean; depth: number; reachable: boolean; needsStart: boolean;
+    lightDirection: [number, number, number]; solarAngularRadius: number; transit: number;
+    shadowOpacity: number;
     halfWidth: number; halfHeight: number; discRadius: number;
     speedBounds: { left: number; right: number; top: number; bottom: number };
     speedMultiplier: number;
@@ -25,7 +28,8 @@ type Track = OrbitalBody & {
     orbitLines: SVGElement[];
 };
 const wrap = (value: number, size: number) => (value % size + size) % size;
-const clippedSpeedMultiplier = 4;
+const edgeSpeedMultiplier = 2;
+const concealedSpeedMultiplier = 4;
 
 function positionAt(track: Track) {
     const distance = track.progress * track.span;
@@ -96,8 +100,12 @@ export class OrbitalMotion {
     private compactPhases = new Map<string, number>();
     private compactGutter = 0;
     private compactLoop = 1;
+    private speed = 1;
+    private measured = false;
 
     constructor(private invalidate: () => void) {}
+
+    setSpeed(speed: 1 | 2 | 4) { this.speed = speed; }
 
     private phaseKey(id: string) { return `${this.scene?.compact ? "mobile" : "desktop"}:${id}`; }
 
@@ -121,11 +129,15 @@ export class OrbitalMotion {
         this.root = root;
         for (const body of scene.bodies) {
             const random = seededRandom(`${body.id}:orbit-period`);
+            const cachedAngle = this.angles.get(this.phaseKey(body.id));
+            const hasAngle = cachedAngle !== undefined && Number.isFinite(cachedAngle);
             this.tracks.set(body.id, { ...body, segments: [], span: 0, progress: 0, startProgress: 0,
                 // A full-orbit rate keeps the approved local pace as the visible arc gets longer.
-                period: scene.compact ? Infinity : 360 / (body.degreesPerSecond * (0.95 + random() * 0.1)),
-                x: 0, y: 0, angle: this.angles.get(this.phaseKey(body.id)) ?? body.phase, lightRotation: 0,
-                back: false, depth: 0, reachable: true, needsStart: !this.angles.has(this.phaseKey(body.id)),
+                period: scene.compact ? Infinity : 360 / (Math.abs(body.degreesPerSecond) * (0.95 + random() * 0.1)),
+                x: 0, y: 0, angle: hasAngle ? cachedAngle : body.phase, lightRotation: 0,
+                back: false, depth: 0, reachable: true, needsStart: !hasAngle,
+                lightDirection: [0, 0, 1], solarAngularRadius: 0, transit: 0,
+                shadowOpacity: 0,
                 halfWidth: 0, halfHeight: 0, discRadius: 0,
                 transitMask: root.querySelector<SVGEllipseElement>(`[data-orbit-mask="${body.id}"]`),
                 orbitLines: Array.from(root.querySelectorAll<SVGElement>(`[data-orbit-line="${body.id}"]`)),
@@ -144,6 +156,7 @@ export class OrbitalMotion {
     }
 
     detach() {
+        this.measured = false;
         this.root?.removeEventListener("pointerover", this.pointerOver);
         this.root?.removeEventListener("pointerout", this.pointerOut);
         this.root?.removeEventListener("pointerdown", this.pointerDown);
@@ -211,22 +224,40 @@ export class OrbitalMotion {
 
     measure(bounds: DOMRect) {
         const scene = this.scene;
-        if (!scene) return;
+        this.measured = false;
+        if (!scene) return true;
         const system = scene.system.getBoundingClientRect(), viewport = scene.viewport.getBoundingClientRect();
-        this.scale = { x: system.width / scene.width, y: system.height / scene.height };
+        if (![bounds, system, viewport, scene].every(hasFiniteSize)) return false;
+        const scale = { x: system.width / scene.width, y: system.height / scene.height };
+        if (![scale.x, scale.y].every(value => Number.isFinite(value) && value > 0)) return false;
+        // Validate the entire measurement before writing SVG lengths or advancing cached phases.
+        const measurements = [...this.tracks.values()].map(track => ({ track,
+            body: track.element.getBoundingClientRect(),
+            content: track.element.querySelector<HTMLElement>("[data-space-body]")?.getBoundingClientRect(),
+        }));
+        if (measurements.some(({ track, body, content }) => !hasFiniteSize(body) || !content || !hasFiniteSize(content)
+            || ![track.orbit.center.x, track.orbit.center.y, track.orbit.tilt, track.initialPosition.x,
+                track.initialPosition.y, track.phase].every(Number.isFinite)
+            || ![track.orbit.radiusX, track.orbit.radiusY].every(value => Number.isFinite(value) && value > 0))) return false;
+        this.scale = scale;
         this.origin = { x: system.left - bounds.left, y: system.top - bounds.top };
         this.viewportBounds = {
             left: Math.max(0, viewport.left - bounds.left), right: Math.min(bounds.width, viewport.right - bounds.left),
             top: Math.max(0, viewport.top - bounds.top), bottom: Math.min(bounds.height, viewport.bottom - bounds.top),
         };
-        for (const track of this.tracks.values()) {
-            const radius = track.element.getBoundingClientRect().width / 2;
+        for (const { track, body, content } of measurements) {
+            const radius = body.width / 2;
+            if (![track.x, track.y].every(Number.isFinite)) {
+                track.x = track.y = 0;
+                track.element.style.translate = "0px 0px";
+            }
+            if (!Number.isFinite(track.angle)) { track.angle = track.phase; track.needsStart = true; }
+            if (!Number.isFinite(track.progress)) track.progress = Number.isFinite(track.startProgress) ? track.startProgress : 0;
             track.discRadius = radius;
             track.transitMask?.setAttribute("rx", `${(radius + 1) / this.scale.x}`);
             track.transitMask?.setAttribute("ry", `${(radius + 1) / this.scale.y}`);
-            const content = track.element.querySelector<HTMLElement>("[data-space-body]")!.getBoundingClientRect();
-            track.halfWidth = content.width / 2;
-            track.halfHeight = content.height / 2;
+            track.halfWidth = content!.width / 2;
+            track.halfHeight = content!.height / 2;
             const centerX = system.left + track.initialPosition.x * this.scale.x + track.x;
             const centerY = system.top + track.initialPosition.y * this.scale.y + track.y;
             // Desktop edge speed uses the disc; mobile also retains identity bounds for star occlusion.
@@ -267,6 +298,8 @@ export class OrbitalMotion {
                 ...Array.from(this.tracks.values(), track => (track.halfWidth + 24) / this.scale.x));
             this.compactLoop = scene.width + this.compactGutter * 2;
         }
+        this.measured = true;
+        return true;
     }
 
     reset(id?: string) {
@@ -301,27 +334,29 @@ export class OrbitalMotion {
 
     update(deltaMs: number) {
         const scene = this.scene;
-        if (!scene) return;
+        if (!scene || !this.measured) return;
+        deltaMs *= this.speed;
         const compactHeld = scene.compact && this.compactHeld();
         for (const track of this.tracks.values()) {
             if (!track.span) continue;
             let position = scene.compact ? this.compactPosition(track) : positionAt(track);
-            const bounds = track.speedBounds;
             const currentX = this.origin.x + position.point.x * this.scale.x, currentY = this.origin.y + position.point.y * this.scale.y;
             const viewport = this.viewportBounds;
-            const clipped = currentX + bounds.left < viewport.left || currentX + bounds.right > viewport.right
-                || currentY + bounds.top < viewport.top || currentY + bounds.bottom > viewport.bottom;
-            const discClipped = currentX - track.discRadius < viewport.left || currentX + track.discRadius > viewport.right
-                || currentY - track.discRadius < viewport.top || currentY + track.discRadius > viewport.bottom;
-            track.speedMultiplier = scene.compact ? discClipped ? clippedSpeedMultiplier : 1
-                : clipped || this.hiddenBehindSun(track, position.point, position.angle) ? clippedSpeedMultiplier : 1;
+            // Both layouts ramp with the fraction of the diameter crossing the nearest edge.
+            const edgeFraction = Math.min(1, Math.max(0,
+                viewport.left - currentX + track.discRadius, currentX + track.discRadius - viewport.right,
+                viewport.top - currentY + track.discRadius, currentY + track.discRadius - viewport.bottom,
+            ) / Math.max(1, track.discRadius * 2));
+            track.speedMultiplier = this.hiddenBehindSun(track, position.point, position.angle) ? concealedSpeedMultiplier
+                : 1 + (edgeSpeedMultiplier - 1) * edgeFraction;
             if (scene.compact && !compactHeld && deltaMs > 0) {
                 const speed = (scene.compactMotion?.pixelsPerSecond ?? scene.width / 72) * (track.compactSpeed ?? 1);
-                this.compactPhases.set(track.id, wrap((this.compactPhases.get(track.id) ?? 0)
+                this.compactPhases.set(track.id, wrap(this.compactPhase(track.id)
                     + deltaMs / 1000 * speed * track.speedMultiplier / this.compactLoop, 1));
                 position = this.compactPosition(track);
             } else if (!scene.compact && !this.held(track.id) && deltaMs > 0) {
-                track.progress = wrap(track.progress + deltaMs * track.speedMultiplier / (track.period * 1000) * 360 / track.span, 1);
+                track.progress = wrap(track.progress + Math.sign(track.degreesPerSecond)
+                    * deltaMs * track.speedMultiplier / (track.period * 1000) * 360 / track.span, 1);
                 position = positionAt(track);
             }
             const { angle, point } = position;
@@ -331,11 +366,27 @@ export class OrbitalMotion {
             track.y = (point.y - track.initialPosition.y) * this.scale.y;
             track.lightRotation = Math.atan2((scene.center.y - point.y) * this.scale.y,
                 (scene.center.x - point.x) * this.scale.x) * 180 / Math.PI + 180;
-            track.back = Math.sin(angle * Math.PI / 180) < 0;
-            track.depth = point.y;
+            track.depth = getOrbitDepth(track.orbit, angle, this.scale,
+                scene.compact ? spaceScene.lighting.phaseDepth.mobile : spaceScene.lighting.phaseDepth.desktop);
+            track.back = track.depth < 0;
+            const sunX = (scene.center.x - point.x) * this.scale.x, sunY = (scene.center.y - point.y) * this.scale.y;
+            const lightDistance = Math.max(1, Math.hypot(sunX, sunY, track.depth));
+            track.lightDirection = [sunX / lightDistance, -sunY / lightDistance, -track.depth / lightDistance];
+            const solarRadius = Math.max(1, Math.min(scene.starWidth, scene.starHeight) / 2);
+            track.solarAngularRadius = solarRadius / lightDistance;
             const x = point.x * this.scale.x, y = point.y * this.scale.y;
+            const diameter = Math.max(1, track.discRadius * 2);
+            const exposure = Math.max(0, Math.min(1,
+                (this.origin.x + x + track.discRadius - viewport.left) / diameter,
+                (viewport.right - this.origin.x - x + track.discRadius) / diameter,
+                (this.origin.y + y + track.discRadius - viewport.top) / diameter,
+                (viewport.bottom - this.origin.y - y + track.discRadius) / diameter));
+            track.shadowOpacity = exposure * exposure * (3 - 2 * exposure);
             const solarDistance = Math.hypot((point.x - scene.center.x) * this.scale.x / (scene.starWidth / 2),
                 (point.y - scene.center.y) * this.scale.y / (scene.starHeight / 2));
+            const discRatio = Math.max(0.001, track.discRadius / solarRadius);
+            const coverage = Math.max(0, Math.min(1, (1 + discRatio - solarDistance) / (2 * discRatio)));
+            track.transit = !track.back ? coverage * coverage * (3 - 2 * coverage) : 0;
             track.reachable = (!track.back || solarDistance >= 1.3)
                 && x - track.halfWidth > 0 && x + track.halfWidth < scene.width * this.scale.x
                 && y - track.halfHeight > scene.focusTop && y + track.halfHeight < scene.height * this.scale.y;
@@ -344,12 +395,10 @@ export class OrbitalMotion {
             track.element.style.setProperty("--orbit-light-rotation", `${track.lightRotation}deg`);
             track.transitMask?.setAttribute("cx", `${point.x}`);
             track.transitMask?.setAttribute("cy", `${point.y}`);
+            track.transitMask?.setAttribute("visibility", track.back ? "hidden" : "visible");
             if (!scene.compact) {
-                const sunX = (scene.center.x - point.x) * this.scale.x, sunY = (scene.center.y - point.y) * this.scale.y;
                 track.element.style.setProperty("--orbit-sun-x", `${sunX}px`);
                 track.element.style.setProperty("--orbit-sun-y", `${sunY}px`);
-                track.element.style.setProperty("--orbit-sun-rx", `${scene.starWidth / 2}px`);
-                track.element.style.setProperty("--orbit-sun-ry", `${scene.starHeight / 2}px`);
                 const rx = scene.starWidth / 2, ry = scene.starHeight / 2;
                 const intersectsSun = Math.hypot(Math.max(0, Math.abs(sunX) - track.halfWidth) / rx,
                     Math.max(0, Math.abs(sunY) - track.halfHeight) / ry) < 1;
@@ -366,7 +415,6 @@ export class OrbitalMotion {
         const ordered = [...this.tracks.values()].sort((a, b) => a.depth - b.depth);
         ordered.forEach((track, index) => {
             track.element.style.zIndex = `${index + 2}`;
-            if (!scene.compact) return;
             const masks: string[] = [];
             for (const front of ordered.slice(index + 1)) {
                 const dx = (front.initialPosition.x - track.initialPosition.x) * this.scale.x + front.x - track.x;
@@ -382,9 +430,16 @@ export class OrbitalMotion {
     }
 
     private compactPosition(track: Track) {
-        const x = wrap(track.initialPosition.x + (this.compactPhases.get(track.id) ?? 0) * this.compactLoop + this.compactGutter,
+        const x = wrap(track.initialPosition.x + this.compactPhase(track.id) * this.compactLoop + this.compactGutter,
             this.compactLoop) - this.compactGutter;
         return getUpperOrbitPoint(track.orbit, x);
+    }
+
+    private compactPhase(id: string) {
+        const phase = this.compactPhases.get(id) ?? 0;
+        if (Number.isFinite(phase)) return phase;
+        this.compactPhases.set(id, 0);
+        return 0;
     }
 
     private compactHeld() { return !!(this.hovered || this.focused || this.pressed); }
