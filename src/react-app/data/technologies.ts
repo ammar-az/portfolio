@@ -13,6 +13,7 @@ import DockerLogo from "../assets/technologies/docker.svg?react";
 import DotnetLogo from "../assets/technologies/dotnetcore.svg?react";
 import EfCoreLogo from "../assets/technologies/efcore.svg?react";
 import JwtLogo from "../assets/technologies/jwt.svg?react";
+import SqliteLogo from "../assets/technologies/sqlite.svg?react";
 import SqlServerLogo from "../assets/technologies/microsoftsqlserver.svg?react";
 import ReactLogo from "../assets/technologies/react.svg?react";
 import ReactRouterLogo from "../assets/technologies/react-router.svg?react";
@@ -81,6 +82,10 @@ export const technologies = {
     jwt: {
         name: "JWT",
         logo: JwtLogo,
+    },
+    sqlite: {
+        name: "SQLite",
+        logo: SqliteLogo,
     },
     sqlserver: {
         name: "SQL Server",

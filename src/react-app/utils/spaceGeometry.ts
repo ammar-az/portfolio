@@ -9,6 +9,8 @@ export type Orbit = {
     radiusX: number;
     radiusY: number;
     tilt: number;
+    // Unprojected extent when an inclined orbit looks smaller than its true outer radius.
+    depthRadius?: number;
 };
 
 // Matches an SVG ellipse rotated around its center. Angles are in degrees.
@@ -29,7 +31,8 @@ export function getOrbitDepth(orbit: Orbit, phase: number, scale: Point, depthSc
     const tilt = orbit.tilt * Math.PI / 180;
     const major = Math.hypot(orbit.radiusX * Math.cos(tilt) * scale.x, orbit.radiusX * Math.sin(tilt) * scale.y);
     const minor = Math.hypot(orbit.radiusY * Math.sin(tilt) * scale.x, orbit.radiusY * Math.cos(tilt) * scale.y);
-    return Math.sin(phase * Math.PI / 180) * Math.max(major, minor) * depthScale;
+    const radius = orbit.depthRadius === undefined ? Math.max(major, minor) : orbit.depthRadius * scale.x;
+    return Math.sin(phase * Math.PI / 180) * radius * depthScale;
 }
 
 /** Upper intersection with a vertical line, including inclined ellipses. */

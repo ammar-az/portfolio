@@ -24,6 +24,7 @@ import type { RingInstance } from "./planetRings";
 import { ringShadowFragment } from "./ringShader";
 import { createMoonGrid, moonVertexShape } from "./moonShapes";
 import type { MoonShape } from "./moonShapes";
+import { solarGlowFragment } from "./solarGlow";
 
 const vertexSource = `
 attribute vec2 a_point;
@@ -76,6 +77,7 @@ ${solarFragment}
 ${giantStormFragment}
 ${planetShadowFragment}
 ${ringShadowFragment}
+${solarGlowFragment}
 void main() {
     if (u_solar > 1.5) {
         gl_FragColor = texture2D(u_map, v_point * 0.5 + 0.5);
@@ -117,11 +119,13 @@ void main() {
     float alpha = 1.0 - smoothstep(1.0 - u_edge, 1.0, radius);
     // Fade the rim using the geometric normal, not crater detail.
     if (u_moon > 0.5) alpha = smoothstep(0.0, u_edge, 0.5 * max(0.0, silhouette) * max(0.0, silhouette));
+    vec3 color = albedo * light * limb;
     if (u_behind > 0.5 && u_sunRect.z > 0.0) {
         float solarDistance = length((v_pixel - u_sunRect.xy) / (u_sunRect.zw * 0.5));
         alpha *= smoothstep(0.99, 1.01, solarDistance);
+        color = solarGlowOver(color, v_pixel);
     }
-    gl_FragColor = vec4(albedo * light * limb * alpha, alpha);
+    gl_FragColor = vec4(color * alpha, alpha);
 }`;
 
 type Material = {
@@ -160,7 +164,7 @@ type SolarEntry = {
     snapshot?: SolarSnapshot;
     snapshotFailed?: string;
 };
-type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "behind" | "sunRect" | "solar" | "solarPhase" | "sunspots" | "sunspotFrames" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent" | "stormsEnabled" | "storms" | "stormMotion" | "stormPale" | "stormDark" | "shadowCount" | "shadowCasters" | "shadowFades" | "shadowSun" | "shadowRadius" | "depth" | "ringEnabled" | "ringMap" | "ringParent" | "ringMajor" | "ringMinor" | "ringLimits" | "tint" | "moon" | "moonAxes" | "moonLobes", WebGLUniformLocation | null>;
+type Uniforms = Record<"resolution" | "rect" | "map" | "phase" | "light" | "relief" | "edge" | "equalArea" | "axisTilt" | "fill" | "terminatorStart" | "behind" | "sunRect" | "solarGlow" | "solar" | "solarPhase" | "sunspots" | "sunspotFrames" | "sites" | "solarPrimary" | "solarHighlight" | "solarShadow" | "solarLaneAccent" | "stormsEnabled" | "storms" | "stormMotion" | "stormPale" | "stormDark" | "shadowCount" | "shadowCasters" | "shadowFades" | "shadowSun" | "shadowRadius" | "depth" | "ringEnabled" | "ringMap" | "ringParent" | "ringMajor" | "ringMinor" | "ringLimits" | "tint" | "moon" | "moonAxes" | "moonLobes", WebGLUniformLocation | null>;
 type TwinklePass = {
     program: WebGLProgram; buffer: WebGLBuffer; dirty: boolean;
     attributes: { location: number; size: number; offset: number }[];
@@ -362,7 +366,7 @@ export class PlanetRenderer {
                 const point = gl.getAttribLocation(program, "a_point");
                 this.pointAttribute = point;
                 gl.enableVertexAttribArray(point); gl.vertexAttribPointer(point, 2, gl.FLOAT, false, 0, 0);
-                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "behind", "sunRect", "solar", "solarPhase", "sunspots", "sunspotFrames", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent", "stormsEnabled", "storms", "stormMotion", "stormPale", "stormDark", "shadowCount", "shadowCasters", "shadowFades", "shadowSun", "shadowRadius", "depth", "ringEnabled", "ringMap", "ringParent", "ringMajor", "ringMinor", "ringLimits", "tint", "moon", "moonAxes", "moonLobes"].map(name => [name, gl.getUniformLocation(program, ["sunspots", "sunspotFrames", "storms", "stormMotion", "shadowCasters", "shadowFades", "moonLobes"].includes(name) ? `u_${name}[0]` : `u_${name}`)])) as Uniforms;
+                this.uniforms = Object.fromEntries(["resolution", "rect", "map", "phase", "light", "relief", "edge", "equalArea", "axisTilt", "fill", "terminatorStart", "behind", "sunRect", "solarGlow", "solar", "solarPhase", "sunspots", "sunspotFrames", "sites", "solarPrimary", "solarHighlight", "solarShadow", "solarLaneAccent", "stormsEnabled", "storms", "stormMotion", "stormPale", "stormDark", "shadowCount", "shadowCasters", "shadowFades", "shadowSun", "shadowRadius", "depth", "ringEnabled", "ringMap", "ringParent", "ringMajor", "ringMinor", "ringLimits", "tint", "moon", "moonAxes", "moonLobes"].map(name => [name, gl.getUniformLocation(program, ["sunspots", "sunspotFrames", "storms", "stormMotion", "shadowCasters", "shadowFades", "moonLobes"].includes(name) ? `u_${name}[0]` : `u_${name}`)])) as Uniforms;
                 gl.uniform1i(this.uniforms.ringMap, 2);
                 this.twinkleFailed = false;
                 this.ringsFailed = false;
@@ -730,7 +734,18 @@ export class PlanetRenderer {
         }
         gl.activeTexture(gl.TEXTURE0);
         gl.uniform1f(uniforms.solar, 0);
-        const solarRect = this.solarEntries.values().next().value?.rect;
+        const solarEntry = this.solarEntries.values().next().value;
+        const solarRect = solarEntry?.rect;
+        const solarGlow: [number, number, number, number] = [0, 0, 0, 0];
+        if (solarEntry && !canvas.closest(".space-scene-mobile")) {
+            for (let channel = 0; channel < 3; channel++) {
+                const primary = parseInt(solarEntry.palette.color.slice(1 + channel * 2, 3 + channel * 2), 16);
+                const highlight = parseInt(solarEntry.palette.highlight.slice(1 + channel * 2, 3 + channel * 2), 16);
+                solarGlow[channel] = (primary * 0.65 + highlight * 0.35) / 255;
+            }
+            solarGlow[3] = solarEntry.element.closest(".space-body-content")?.matches(":hover, :focus-visible, [data-selected]") ? 2 : 1;
+        }
+        gl.uniform4fv(uniforms.solarGlow, solarGlow);
         gl.uniform4f(uniforms.sunRect, solarRect ? solarRect.left - bounds.left + solarRect.width / 2 : 0,
             solarRect ? bounds.height - (solarRect.top - bounds.top + solarRect.height / 2) : 0,
             solarRect?.width ?? 0, solarRect?.height ?? 0);
@@ -878,7 +893,7 @@ export class PlanetRenderer {
         // Transparent annuli test against curved sphere depths without hiding geometry behind their gaps.
         if (this.rings && shadowSun && solarRect) {
             gl.depthMask(false);
-            this.rings.draw(ringFrames, bounds, systemDepthRange, shadowSun, solarRect, spheres, this.shadowsEnabled);
+            this.rings.draw(ringFrames, bounds, systemDepthRange, shadowSun, solarRect, spheres, this.shadowsEnabled, solarGlow);
             gl.depthMask(true); gl.useProgram(this.program); gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
             gl.enableVertexAttribArray(this.pointAttribute); gl.vertexAttribPointer(this.pointAttribute, 2, gl.FLOAT, false, 0, 0);
         }

@@ -4,6 +4,7 @@ import { getPlanetShadowCasters, maxPlanetShadowCasters } from "./planetShadows"
 import type { ShadowSphere, ShadowSun } from "./planetShadows";
 import { ringPixels, systemBasis } from "./planetSystems";
 import type { RingProfile, Vector3 } from "./planetSystems";
+import { solarGlowFragment } from "./solarGlow";
 
 export type RingInstance = { id: string; profile: RingProfile; center: Vector3; radius: number; angle: number; opacity: number; drawDepth?: number };
 const vertex = `
@@ -35,6 +36,7 @@ uniform vec3 u_limits;
 uniform vec4 u_color;
 uniform vec4 u_sunRect;
 ${planetShadowFragment}
+${solarGlowFragment}
 void main() {
     float r = length(v_local) / u_center.w;
     if (r <= u_limits.x || r >= u_limits.y) discard;
@@ -50,7 +52,9 @@ void main() {
     vec3 light = normalize(u_shadowSun.xyz-v_local);
     float diffuse = 0.4 + 0.6 * sqrt(abs(dot(cross(u_major,u_minor),light)));
     float lighting = 0.20 + 0.80 * diffuse * planetShadowVisibility(v_local);
-    gl_FragColor = vec4(u_color.rgb * lighting * alpha,alpha);
+    vec3 color = u_color.rgb * lighting;
+    if (u_center.z + v_local.z < 0.0) color = solarGlowOver(color, v_pixel);
+    gl_FragColor = vec4(color * alpha,alpha);
 }`;
 
 /** Thin physical annuli share the sphere depth buffer; no DOM hit targets or animated raster textures. */
@@ -70,7 +74,7 @@ export class PlanetRings {
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
         this.point = gl.getAttribLocation(this.program, "a_point");
-        this.uniforms = Object.fromEntries(["resolution", "center", "major", "minor", "outer", "depthRange", "drawDepth", "map", "limits", "color", "sunRect", "shadowCount", "shadowCasters", "shadowFades", "shadowSun", "shadowRadius"].map(name => [name,
+        this.uniforms = Object.fromEntries(["resolution", "center", "major", "minor", "outer", "depthRange", "drawDepth", "map", "limits", "color", "sunRect", "solarGlow", "shadowCount", "shadowCasters", "shadowFades", "shadowSun", "shadowRadius"].map(name => [name,
             gl.getUniformLocation(this.program, `u_${name}${["shadowCasters", "shadowFades"].includes(name) ? "[0]" : ""}`)]));
     }
     texture(profile: RingProfile) {
@@ -88,12 +92,13 @@ export class PlanetRings {
         this.textures.set(profile, texture);
         return texture;
     }
-    draw(rings: RingInstance[], bounds: DOMRect, depthRange: number, sun: ShadowSun, solarRect: DOMRect, spheres: ShadowSphere[], shadows: boolean) {
+    draw(rings: RingInstance[], bounds: DOMRect, depthRange: number, sun: ShadowSun, solarRect: DOMRect, spheres: ShadowSphere[], shadows: boolean, glow: [number, number, number, number]) {
         const gl = this.gl, u = this.uniforms;
         gl.useProgram(this.program); gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
         gl.enableVertexAttribArray(this.point); gl.vertexAttribPointer(this.point, 2, gl.FLOAT, false, 0, 0);
         gl.uniform2f(u.resolution, bounds.width, bounds.height); gl.uniform1f(u.depthRange, depthRange);
         gl.uniform1i(u.map, 0); gl.activeTexture(gl.TEXTURE0);
+        gl.uniform4fv(u.solarGlow, glow);
         gl.uniform4f(u.sunRect, solarRect.left - bounds.left + solarRect.width / 2, bounds.bottom - solarRect.top - solarRect.height / 2, solarRect.width, solarRect.height);
         for (const ring of [...rings].sort((a, b) => a.center[2] - b.center[2])) {
             const { profile, center, radius } = ring, basis = systemBasis(ring.angle, profile.opening);

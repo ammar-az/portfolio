@@ -63,6 +63,28 @@ export const projects: Project[] = [
         stack: [
             { category: "frontend", technologies: [tech.typescript, tech.react, tech.tailwindcss] },
             { category: "backend", technologies: [tech.hono, tech.cloudflareworkers] },
+            { category: "data", technologies: [tech.sqlite] },
+            { category: "deployment", technologies: [tech.cloudflare] },
+        ]
+    },
+    {
+        name: "Portfolio",
+        featuredTechnologies: [],
+        subdomain: "portfolio",
+        liveUrl: "https://ammarz.com",
+        repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/portfolio" }],
+        summary: "My personal developer portfolio.",
+        description: `A home for my projects. 
+        Something a little more immersive is Here™.`,
+        logo: PortfolioLogo,
+        images: [
+            {src: "/projects/portfolio/portfolio.jpg", alt: "The portfolio's space mode, with planets representing projects" },
+            {src: "/projects/portfolio/portfolio-simple.jpg", alt: "The portfolio's simple mode, with project cards on a dark layout" },
+            {src: "/projects/portfolio/portfolio-transit.jpg", alt: "A planet and its moons transiting the sun" },
+            {src: "/projects/portfolio/portfolio-eclipse.jpg", alt: "A moon eclipsing its planet with a visible shadow on the surface" },
+        ],
+        stack: [
+            { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite] },
             { category: "deployment", technologies: [tech.cloudflare] },
         ]
     },
@@ -83,21 +105,6 @@ export const projects: Project[] = [
         images: [{ src: "/projects/word-wasp/word-wasp.jpg", alt: "Word Wasp puzzle with letter tiles, guessed words, and score" }, { src: "/projects/word-wasp/word-wasp-light.jpg", alt: "Word Wasp puzzle with a white background" }],
         stack: [
             { category: "frontend", technologies: [tech.react, tech.typescript, tech.css] },
-        ]
-    },
-    {
-        name: "Portfolio",
-        featuredTechnologies: [],
-        subdomain: "portfolio",
-        liveUrl: "https://ammarz.com",
-        repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/portfolio" }],
-        summary: "My personal developer portfolio.",
-        description: "A simple home for my projects. Something a little more immersive is coming Soon™.",
-        logo: PortfolioLogo,
-        images: [],
-        stack: [
-            { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite] },
-            { category: "deployment", technologies: [tech.cloudflare] },
         ]
     },
     {

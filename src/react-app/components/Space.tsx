@@ -142,7 +142,7 @@ export default function Space({ textureRevision, onReroll, starfieldRevision, on
             const element = root.querySelector<HTMLElement>(`[data-orbit-id="${id}"]`);
             const body = layout.body(appearance, index);
             return element ? [{ id, element, orbit: { center: body.center, radiusX: body.radiusX,
-                radiusY: body.radiusY, tilt: body.tilt }, initialPosition: body.position,
+                radiusY: body.radiusY, tilt: body.tilt, depthRadius: body.depthRadius }, initialPosition: body.position,
                 phase: body.phase, degreesPerSecond: body.degreesPerSecond, compactSpeed: body.compactSpeed }] : [];
         });
         renderer.orbits.configure({ width, height, headerBottom: sceneSize.headerBottom, focusTop: desktop ? sceneSize.headerBottom + 8 : 0,

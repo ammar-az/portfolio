@@ -30,7 +30,8 @@ export const spaceScene = {
         ],
         // Fit Project X between its upper-right turn and a lower turn at the left edge.
         // Center fraction is relative to the right turn; below 0.5 keeps an open left-side arc.
-        outer: { centerFraction: 0.44, rightY: 0.225, bottomInset: 14, degreesPerSecond: -0.22 },
+        // Its inclined projection is compressed; depth must still sit beyond the last main lane.
+        outer: { centerFraction: 0.44, rightY: 0.225, bottomInset: 14, degreesPerSecond: -0.22, depthRatio: 1.8 },
     },
     // Artistic falloff: outer worlds have deeper shade, while their lit faces stay bright.
     lighting: {

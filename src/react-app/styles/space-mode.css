@@ -506,6 +506,14 @@
     text-shadow: 0 0 8px color-mix(in srgb, var(--body-color) 55%, transparent);
 }
 
+.space-scene:not(.space-scene-mobile) .space-body-label {
+    text-shadow: 0 1px 2px #000, 0 0 3px #000d;
+}
+
+.space-scene:not(.space-scene-mobile) .space-body-content:focus-visible .space-body-label {
+    text-shadow: 0 1px 2px #000, 0 0 3px #000d, 0 0 8px color-mix(in srgb, var(--body-color) 55%, transparent);
+}
+
 .space-body-star {
     --body-size: var(--body-diameter);
     --star-brand-top: calc(50% - 1.75rem);

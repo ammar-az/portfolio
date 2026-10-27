@@ -67,6 +67,7 @@ export function getSpaceLayout(viewport: Viewport, compact: boolean) {
                     radiusX, radiusY, tilt: lane.tilt,
                     phase: Math.atan2(localY / radiusY, localX / radiusX) * 180 / Math.PI,
                     degreesPerSecond: 0, compactSpeed: lane.speed,
+                    depthRadius: undefined,
                 };
             },
         };
@@ -108,6 +109,7 @@ export function getSpaceLayout(viewport: Viewport, compact: boolean) {
             } else {
                 const bottomY = height - (diameter / 2 + outer.bottomInset) * height / viewport.height;
                 orbit = cornerOrbit(rightEdge, outer.rightY * height, bottomY, outer.centerFraction);
+                orbit.depthRadius = (rightEdge - center.x) * outer.depthRatio;
             }
             const radians = orbit.tilt * Math.PI / 180;
             const phase = lane?.phase ?? Math.atan2(-orbit.radiusY * Math.sin(radians),
