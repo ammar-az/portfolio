@@ -3,16 +3,24 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 type Phase = "idle" | "covering" | "revealing";
 type Request = { simple: boolean; focus: HTMLElement | null; anchor: boolean };
 
-export default function useModeTransition() {
-    const [simple, setSimple] = useState(() => window.location.hash !== "#space");
-    const [phase, setPhase] = useState<Phase>(() => window.location.hash === "#space" ? "revealing" : "idle");
+export default function useModeTransition(defaultMode: "simple" | "space" = "simple") {
+    const [initialSimple] = useState(() => window.location.hash ? window.location.hash !== "#space" : defaultMode !== "space");
+    const [simple, setSimple] = useState(initialSimple);
+    const [phase, setPhase] = useState<Phase>(() => initialSimple ? "idle" : "revealing");
     const [reduced, setReduced] = useState(() => matchMedia("(prefers-reduced-motion: reduce)").matches);
     const overlayRef = useRef<HTMLDivElement>(null);
+    const headerOverlayRef = useRef<HTMLDivElement>(null);
     const requestRef = useRef<Request | null>(null);
     const spaceReady = useRef(false);
     const readyResolver = useRef<(() => void) | null>(null);
     const simpleScroll = useRef({ left: 0, top: 0 });
     const simpleHash = useRef(window.location.hash === "#space" ? "" : window.location.hash);
+    useLayoutEffect(() => {
+        // Normalize a remembered Space entry before URL synchronization runs.
+        if (!initialSimple && !window.location.hash) {
+            window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search + "#space");
+        }
+    }, [initialSimple]);
     const onSpaceReady = useCallback(() => {
         spaceReady.current = true;
         readyResolver.current?.();
@@ -51,7 +59,7 @@ export default function useModeTransition() {
             window.removeEventListener("popstate", syncMode);
             window.removeEventListener("hashchange", syncMode);
         };
-    }, [changeMode, phase]);
+    }, [changeMode, phase, simple]);
 
     useLayoutEffect(() => {
         const request = requestRef.current;
@@ -89,6 +97,11 @@ export default function useModeTransition() {
         if (phase === "idle" || !overlay) return;
         let cancelled = false;
         let animation: Animation | null = null;
+        let headerAnimation: Animation | null = null;
+        const animate = (frames: Keyframe[], options: KeyframeAnimationOptions) => {
+            headerAnimation = headerOverlayRef.current?.animate(frames, options) ?? null;
+            return overlay.animate(frames, options);
+        };
         let frame = 0;
         const nextFrame = () => new Promise<void>(resolve => {
             frame = requestAnimationFrame(() => { frame = 0; resolve(); });
@@ -97,12 +110,13 @@ export default function useModeTransition() {
             cancelled = true;
             cancelAnimationFrame(frame);
             animation?.cancel();
+            headerAnimation?.cancel();
             readyResolver.current?.();
             readyResolver.current = null;
         };
 
         if (phase === "covering") {
-            animation = overlay.animate([{ opacity: 0 }, { opacity: 1 }], {
+            animation = animate([{ opacity: 0 }, { opacity: 1 }], {
                 duration: 120, easing: "ease-in", fill: "forwards",
             });
             void animation.finished.then(() => {
@@ -126,7 +140,7 @@ export default function useModeTransition() {
                 await nextFrame();
                 if (cancelled) return;
                 if (reduced) { setPhase("idle"); return; }
-                animation = overlay.animate([{ opacity: 1 }, { opacity: 0 }], {
+                animation = animate([{ opacity: 1 }, { opacity: 0 }], {
                     duration: 220, easing: "ease-out", fill: "forwards",
                 });
                 await animation.finished.catch(() => {});
@@ -156,5 +170,5 @@ export default function useModeTransition() {
         };
     }, [phase]);
 
-    return { simple, changeMode, phase, overlayRef, onSpaceReady };
+    return { simple, changeMode, phase, overlayRef, headerOverlayRef, onSpaceReady };
 }

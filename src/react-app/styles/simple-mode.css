@@ -1,5 +1,6 @@
 .simple-page {
     width: 100%;
+    padding-top: var(--header-height, 4rem);
 }
 
 .intro {
@@ -15,7 +16,7 @@
     padding: 0.3rem 0.75rem;
     border: 1px solid var(--color-border-subtle);
     border-radius: 2rem;
-    color: #c1c7d2;
+    color: #b1bed1;
     font-size: 0.65rem;
     letter-spacing: 0.32em;
     text-transform: uppercase;
@@ -39,7 +40,7 @@
     width: 42%;
     left: 50%;
     bottom: 0;
-    background: linear-gradient(90deg, #386b87, #67a4be 30%, #b6d7e4 48%, #589bb7 68%, #3d7f9f);
+    background: linear-gradient(90deg, #455c7a, #7894b8 30%, #b6c7df 48%, #6683a7 68%, #49668a);
     transform: translateX(-50%) rotate(-0.5deg);
     border-radius: 100%;
 }
@@ -122,7 +123,7 @@
     padding: 0.65rem;
     border: 1px solid var(--color-border);
     border-radius: 0.85rem;
-    background: linear-gradient(125deg, #23282d, #1a1e22);
+    background: linear-gradient(135deg, #171c24, #10151c);
     color: var(--color-text);
     text-align: left;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
@@ -130,8 +131,8 @@
 
 @media (hover: hover) and (pointer: fine) {
     .card:hover {
-        border-color: var(--color-accent-highlight);
-        box-shadow: 0 0 24px var(--color-accent-glow);
+        border-color: var(--color-ui-accent);
+        box-shadow: var(--ui-highlight-shadow);
         transform: translateY(-3px);
     }
 }
@@ -142,7 +143,7 @@
     aspect-ratio: 2;
     width: 100%;
     overflow: hidden;
-    background: #0d1013;
+    background: #0b1017;
     border: 1px solid var(--color-border-subtle);
     border-radius: 0.5rem;
 }
@@ -160,7 +161,7 @@
     justify-content: center;
     gap: 0.75rem;
     height: 100%;
-    background: radial-gradient(ellipse at bottom, #303642, #111519 75%);
+    background: radial-gradient(ellipse at bottom, #202c3d, #0d131c 75%);
     font-weight: 600;
 }
 
@@ -222,10 +223,10 @@
 .technology-tag {
     font-family: var(--font-mono);
     padding: 0.1rem 0.6rem;
-    border: 1px solid #4c545f;
+    border: 1px solid var(--color-border);
     border-radius: 2rem;
-    background: #ffffff04;
-    color: #d4d9e2;
+    background: #151e2b;
+    color: #becbdd;
     font-size: 0.65rem;
     line-height: 1.4;
 }
@@ -233,7 +234,7 @@
 .card-arrow {
     font-size: 1.7rem;
     line-height: 1;
-    color: #c4cbd6;
+    color: var(--color-accent-highlight);
 }
 
 @media (max-width: 74.999rem) {

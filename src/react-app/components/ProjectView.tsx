@@ -15,6 +15,7 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
     const Logo = project.logo;
     const selectedImage = project.images[imageIndex];
     const liveUrl = project.liveUrl;
+    const hasLinks = !!(liveUrl || project.repositories?.length);
     const navigateImage = (direction: number) => {
         setImageIndex(index => (index + direction + project.images.length) % project.images.length);
     };
@@ -61,38 +62,41 @@ export default function ProjectView({ project, onClose }: ProjectViewProps) {
             </header>
             <div ref={contentRef} className="project-content" tabIndex={-1}>
                 <div className="project-sections">
-                    <section className="project-gallery" aria-label={`${project.name} screenshots`}>
-                        <div className="project-image-frame">
-                            {selectedImage ? <img src={selectedImage.src} alt={selectedImage.alt} draggable={false} /> : <div className="project-image-empty"><Logo aria-hidden="true" /><p>{project.name}</p></div>}
-                            {project.images.length > 1 && <>
-                                <button type="button" className="project-gallery-arrow project-gallery-previous" aria-label="Previous screenshot" onClick={() => navigateImage(-1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg></button>
-                                <button type="button" className="project-gallery-arrow project-gallery-next" aria-label="Next screenshot" onClick={() => navigateImage(1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
-                            </>}
-                        </div>
-                        {selectedImage && <div className="project-image-caption" aria-live="polite" aria-atomic="true"><span>{selectedImage.alt}</span>{project.images.length > 1 && <span>{imageIndex + 1} / {project.images.length}</span>}</div>}
-                        {project.images.length > 1 && <div className="project-thumbnails" aria-label="Choose screenshot">
-                            {project.images.map((image, index) => <button type="button" key={image.src} className="project-thumbnail" aria-label={`Show ${image.alt}`} aria-pressed={imageIndex === index} onClick={() => setImageIndex(index)}><img src={image.src} alt="" loading="lazy" /></button>)}
+                    <div className="project-main">
+                        {selectedImage && <section className="project-gallery" aria-label={`${project.name} screenshots`}>
+                            <div className="project-image-frame">
+                                <img src={selectedImage.src} alt={selectedImage.alt} draggable={false} />
+                                {project.images.length > 1 && <>
+                                    <button type="button" className="project-gallery-arrow project-gallery-previous" aria-label="Previous screenshot" onClick={() => navigateImage(-1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg></button>
+                                    <button type="button" className="project-gallery-arrow project-gallery-next" aria-label="Next screenshot" onClick={() => navigateImage(1)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
+                                </>}
+                            </div>
+                            <div className="project-image-caption" aria-live="polite" aria-atomic="true"><span>{selectedImage.alt}</span>{project.images.length > 1 && <span>{imageIndex + 1} / {project.images.length}</span>}</div>
+                            {project.images.length > 1 && <div className="project-thumbnails" aria-label="Choose screenshot">
+                                {project.images.map((image, index) => <button type="button" key={image.src} className="project-thumbnail" aria-label={`Show ${image.alt}`} aria-pressed={imageIndex === index} onClick={() => setImageIndex(index)}><img src={image.src} alt="" loading="lazy" /></button>)}
+                            </div>}
+                        </section>}
+                        <section className="project-description" aria-labelledby={`${titleId}-about`}><h3 id={`${titleId}-about`}>About the project</h3>{project.description.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)}</section>
+                    </div>
+                    {(hasLinks || project.stack.length > 0) && <aside className="project-sidebar" aria-label="Project links and technologies">
+                        {hasLinks && <div className="project-links">
+                            <div className={`project-link-buttons${liveUrl && (project.repositories?.length ?? 0) > 1 ? " project-link-buttons-multiple-repos" : ""}`}>
+                                {liveUrl && <a className="button button-primary" href={liveUrl} target="_blank" rel="noopener noreferrer">Live project ↗</a>}
+                                {project.repositories?.map(repository => <a className="button" key={repository.url} href={repository.url} target="_blank" rel="noopener noreferrer">{repository.label} ↗</a>)}
+                            </div>
+                            {liveUrl && <a className="project-domain" href={liveUrl} target="_blank" rel="noopener noreferrer">{new URL(liveUrl).hostname}</a>}
                         </div>}
-                    </section>
-                    {(liveUrl || !!project.repositories?.length) && <div className="project-links">
-                        <div className={`project-link-buttons${liveUrl && (project.repositories?.length ?? 0) > 1 ? " project-link-buttons-multiple-repos" : ""}`}>
-                            {liveUrl && <a className="button button-primary" href={liveUrl} target="_blank" rel="noopener noreferrer">Live project ↗</a>}
-                            {project.repositories?.map(repository => <a className="button" key={repository.url} href={repository.url} target="_blank" rel="noopener noreferrer">{repository.label} ↗</a>)}
-                        </div>
-                        {liveUrl && <a className="project-domain" href={liveUrl} target="_blank" rel="noopener noreferrer">{new URL(liveUrl).hostname}</a>}
-                    </div>}
-                    <section className="project-description" aria-labelledby={`${titleId}-about`}><h3 id={`${titleId}-about`}>About the project</h3>{project.description.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)}</section>
-                    {project.stack.length > 0 && <section className="project-stack" aria-labelledby={`${titleId}-stack`}>
-                        <h3 id={`${titleId}-stack`}>Technology stack</h3>
-                        <p className="project-stack-intro">The tools behind {project.name}.</p>
-                        <div className="stack-groups">{project.stack.map(group => <section className="stack-group" key={group.category}>
-                            <h4>{stackLabels[group.category]}</h4>
-                            <ul className="stack-technologies">{group.technologies.map(technology => {
-                                const TechnologyLogo = technology.logo;
-                                return <li key={technology.name}><TechnologyLogo aria-hidden="true" /><span>{technology.name}</span></li>;
-                            })}</ul>
-                        </section>)}</div>
-                    </section>}
+                        {project.stack.length > 0 && <section className="project-stack" aria-labelledby={`${titleId}-stack`}>
+                            <h3 id={`${titleId}-stack`}>Technology stack</h3>
+                            <div className="stack-groups">{project.stack.map(group => <section className="stack-group" key={group.category}>
+                                <h4>{stackLabels[group.category]}</h4>
+                                <ul className="stack-technologies">{group.technologies.map(technology => {
+                                    const TechnologyLogo = technology.logo;
+                                    return <li key={technology.name}><TechnologyLogo aria-hidden="true" /><span>{technology.name}</span></li>;
+                                })}</ul>
+                            </section>)}</div>
+                        </section>}
+                    </aside>}
                 </div>
             </div>
         </dialog>
