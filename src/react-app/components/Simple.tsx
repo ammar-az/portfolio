@@ -37,9 +37,9 @@ export default function Simple({ onSpaceMode }: SimpleProps) {
                 <p className="intro-role">Full-Stack Developer</p>
                 <p className="intro-description">I create interesting applications. Some of them might even be useful.</p>
                 <div className="intro-actions">
-                    <a className="button button-primary" href="#projects">View my projects <span aria-hidden="true">↓</span></a>
+                    <a className="button" href="#projects">View my projects <span aria-hidden="true">↓</span></a>
                     {onSpaceMode ? (
-                        <button type="button" className="button" onClick={onSpaceMode}>Explore Immersive View <span aria-hidden="true">↗</span></button>
+                        <button type="button" className="button button-primary" onClick={onSpaceMode}>Explore Immersive View <span aria-hidden="true">↗</span></button>
                     ) : <span className="intro-space-note">Immersive View<span>Coming soon</span></span>}
                 </div>
             </section>

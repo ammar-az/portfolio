@@ -21,6 +21,7 @@ import TypeScriptLogo from "../assets/technologies/typescript.svg?react";
 import ViteLogo from "../assets/technologies/vite.svg?react";
 import AngularLogo from "../assets/technologies/angular.svg?react";
 import CppLogo from "../assets/technologies/cplusplus.svg?react";
+import WebGlLogo from "../assets/technologies/webgl.svg?react";
 
 export const technologies = {
     angular: {
@@ -106,5 +107,9 @@ export const technologies = {
     vite: {
         name: "Vite",
         logo: ViteLogo,
+    },
+    webgl: {
+        name: "WebGL",
+        logo: WebGlLogo,
     },
 } satisfies Record<string, Technology>;

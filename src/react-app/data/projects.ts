@@ -71,20 +71,32 @@ export const projects: Project[] = [
         name: "Portfolio",
         featuredTechnologies: [],
         subdomain: "portfolio",
-        liveUrl: "https://ammarz.com",
+        liveUrl: "https://ammarz.com/#space",
         repositories: [{ label: "GitHub", url: "https://github.com/ammar-az/portfolio" }],
         summary: "My personal developer portfolio.",
-        description: `A home for my projects. 
-        Something a little more immersive is Here™.`,
+        description: `A place to showcase my projects. I wanted a distinctive page that reflected my interests, and being an amateur astronomer I quickly decided on a space theme, specifically a solar system.
+        As solar systems are not an ideal way of conveying information, I realized I had to provide an alternative, more informative display if I didn't want to cover the scene in text.
+        Instead of a landing page or explanation prompt, the site defaults to a simpler, more traditional portfolio featuring informative project cards with large previews.
+        \n\nWith the default layout immediately recognizable as a portfolio, the space scene I envisioned could be created with more freedom.
+        Space mode features an interactive, procedurally generated solar system. Planets orbit the star and have orbiters of their own. Celestial bodies darken as they face away from the sun and cast shadows.
+        Like the planets, the starfield background is procedurally generated, and it includes real photographs of deep sky objects. 
+        The star emulates the turbulence of stellar surfaces, with visible convection and the formation of starspots.
+        It's better seen than described, so check out space mode, preferably on desktop, after reading this.
+        \n\nA bit of a disclaimer, I used AI pretty extensively while developing space mode. I directed the visual design, controls, layout, procedural generation, and motion,
+        but without any background in graphics or animation I pretty much vibe-coded those aspects.`,
         logo: PortfolioLogo,
         images: [
             {src: "/projects/portfolio/portfolio.jpg", alt: "The portfolio's space mode, with planets representing projects" },
             {src: "/projects/portfolio/portfolio-simple.jpg", alt: "The portfolio's simple mode, with project cards on a dark layout" },
+            {src: "/projects/portfolio/portfolio-project-view.jpg", alt: "The portfolio's project information, with the space view visible in the background" },
             {src: "/projects/portfolio/portfolio-transit.jpg", alt: "A planet and its moons transiting the sun" },
             {src: "/projects/portfolio/portfolio-eclipse.jpg", alt: "A moon eclipsing its planet with a visible shadow on the surface" },
+            {src: "/projects/portfolio/portfolio-custom-star.jpg", alt: "A customized star with a starspot visible on its surface" },
+            {src: "/projects/portfolio/portfolio-mobile.jpg", alt: "The mobile version of the portfolio's space mode" },
+            {src: "/projects/portfolio/portfolio-orbiters.jpg", alt: "A gas giant with a ring system orbited by multiple moons" },
         ],
         stack: [
-            { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite] },
+            { category: "frontend", technologies: [tech.react, tech.typescript, tech.css, tech.vite, tech.webgl] },
             { category: "deployment", technologies: [tech.cloudflare] },
         ]
     },

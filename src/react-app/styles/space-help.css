@@ -1,4 +1,4 @@
-.space-intro { position: fixed; inset: 0; z-index: 11; pointer-events: none; color: #fff; font-size: 0.9rem; text-shadow: 0 1px 4px #000, 0 0 8px #000; }
+.space-intro { position: fixed; inset: 0; z-index: 11; pointer-events: none; color: #fff; font-size: clamp(1.1rem, 1.833vw, 1.65rem); text-shadow: 0 1px 4px #000, 0 0 8px #000; }
 .space-intro button { position: absolute; pointer-events: auto; border: 0; padding: 0; background: none; color: inherit; font: inherit; line-height: 1.5; text-shadow: inherit; cursor: pointer; }
 .space-intro-projects { transform: translate(-50%, -50%); text-align: center; }
 .space-intro-help { transform: translateY(-50%); text-align: left; }
